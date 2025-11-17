@@ -39,7 +39,7 @@
 2. **필수 라이브러리 설치:**
     
     ```
-    pip install fastapi uvicorn numpy opencv-python-headless torch torchvision ultralytics
+    pip install -r requirements.txt
     
     ```
     
