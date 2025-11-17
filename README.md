@@ -43,8 +43,7 @@
     
     ```
     
-    > 참고: 파일이 있는 위치로 옮긴 후 설치해야 합니다.
-    > Uvicorn 실행 시 YOLOv8 모델(yolov8n-pose.pt)이 자동으로 다운로드됩니다.
+    > 참고: Uvicorn 실행 시 YOLOv8 모델(yolov8n-pose.pt)이 자동으로 다운로드됩니다.
 
 ### 2. 서버 실행
 
