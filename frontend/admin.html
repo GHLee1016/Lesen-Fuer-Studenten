@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin — Levels</title>
+  <style>
+    :root{--bg:#f6f7fb;--card:#fff;--line:#e7e9ef;--txt:#111;--sub:#666;--blue:#2b8cff;--green:#00b470;--amber:#ffb300;--red:#e2475d;}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    #wrap{max-width:1100px;margin:24px auto;background:var(--card);border-radius:12px;padding:16px 20px;box-shadow:0 8px 30px rgba(0,0,0,.06)}
+    h3,h4{margin:8px 0}
+    .row{display:flex;gap:8px;align-items:center;margin:8px 0;flex-wrap:wrap}
+    input[type="text"],select{height:34px;padding:6px 8px;border:1px solid var(--line);border-radius:8px}
+    input#token{width:220px}
+    button{height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:#fff;cursor:pointer}
+    button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+    .cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+    .card{border:1px solid var(--line);border-radius:10px;padding:12px;min-height:200px;background:#fff}
+    .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px}
+    .tag.high{background:rgba(0,180,112,.12);color:var(--green);border:1px solid rgba(0,180,112,.35)}
+    .tag.medium{background:rgba(255,179,0,.12);color:var(--amber);border:1px solid rgba(255,179,0,.35)}
+    .tag.low{background:rgba(226,71,93,.12);color:var(--red);border:1px solid rgba(226,71,93,.35)}
+    table{width:100%;border-collapse:collapse}
+    th,td{padding:8px;border-bottom:1px solid var(--line);font-size:14px}
+    th{text-align:left;color:var(--sub);font-weight:600}
+    .muted{color:var(--sub)}
+    @media (max-width:960px){.cols{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <div class="row">
+      <h3 style="margin-right:auto">Users by Level</h3>
+      <label for="token">Admin Token</label>
+      <input id="token" type="text" placeholder="Enter admin token..."/>
+      <button id="btnRefresh">Refresh</button>
+      <button id="btnCsv">Export CSV</button>
+      <button id="btnJson">Export JSON</button>
+    </div>
+
+    <div class="row">
+      <div style="flex:1"></div>
+      <label for="hi">High ≥</label><input id="hi" type="text" value="70" style="width:72px"/>
+      <label for="lo">Low <</label><input id="lo" type="text" value="40" style="width:72px"/>
+      <button id="btnApply" class="primary">Apply</button>
+      <span id="msg" class="muted"></span>
+    </div>
+
+    <div class="cols">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h4>High</h4><span class="tag high">≥ High</span>
+        </div>
+        <table><thead><tr><th>User</th><th>Last Score</th></tr></thead><tbody id="high"></tbody></table>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h4>Medium</h4><span class="tag medium">[Low, High]</span>
+        </div>
+        <table><thead><tr><th>User</th><th>Last Score</th></tr></thead><tbody id="medium"></tbody></table>
+      </div>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <h4>Low</h4><span class="tag low">< Low</span>
+        </div>
+        <table><thead><tr><th>User</th><th>Last Score</th></tr></thead><tbody id="low"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =============================================
+    // ========== [수정] API 주소 변경 ==========
+    // =============================================
+    const ORIGIN = "http://localhost:8000"; // HTTP, 8000
+    const ADMIN_WS = ORIGIN.replace("https","wss").replace("http","ws") + "/admin/ws"; // ws://
+    // =============================================
+
+    const tokenEl = document.getElementById("token");
+    const hiEl = document.getElementById("hi");
+    const loEl = document.getElementById("lo");
+    const msgEl = document.getElementById("msg");
+    const tbody = {
+      high: document.getElementById("high"),
+      medium: document.getElementById("medium"),
+      low: document.getElementById("low"),
+    };
+
+    let allGroupsData = {};
+
+    function setMsg(s, ok=true){ msgEl.textContent=s; msgEl.style.color = ok ? "#2b8cff" : "crimson"; if(s) setTimeout(()=>msgEl.textContent="",2000); }
+    
+    function render(groups){
+      ["high","medium","low"].forEach(lv=>{
+        const rows = (groups[lv]||[])
+          .map(it => `<tr><td>${it.user_id}</td><td>${it.last_score}</td></tr>`)
+          .join("");
+        tbody[lv].innerHTML = rows || `<tr><td class="muted" colspan="2">No users</td></tr>`;
+      });
+    }
+
+    async function fetchJSON(url, opts={}){
+      const res = await fetch(url, opts);
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    }
+
+    async function refresh(){
+      // [수정] 토큰이 비어있으면 요청을 보내지 않습니다.
+      const token = tokenEl.value.trim();
+      if (!token) {
+        return setMsg("Token required for refresh/apply/download.", false);
+      }
+      
+      try {
+        const data = await fetchJSON(`${ORIGIN}/admin/levels`, { headers: {"X-Admin-Token": token} });
+        allGroupsData = data; 
+        render(allGroupsData); 
+        setMsg("Refreshed!", true);
+      } catch (e) {
+        setMsg("Auth/connection error (Check token)", false);
+        allGroupsData = {}; 
+        render(allGroupsData);
+      }
+    }
+
+    async function applyThresholds(){
+      const token = tokenEl.value.trim();
+      if (!token) {
+        return setMsg("Token required for refresh/apply/download.", false);
+      }
+
+      const hi = parseFloat(hiEl.value), lo = parseFloat(loEl.value);
+      const res = await fetch(`${ORIGIN}/admin/levels/config`, {
+        method:"POST",
+        headers: {"Content-Type":"application/json","X-Admin-Token": token},
+        body: JSON.stringify({ high: hi, low: lo })
+      });
+      if (res.ok) {
+        setMsg("Updated! New groups are pushed automatically.", true);
+      } else {
+        setMsg("Update failed", false);
+      }
+    }
+    
+    function download(url){ 
+      const token = tokenEl.value.trim();
+      if (!token) {
+        return setMsg("Token required for refresh/apply/download.", false);
+      }
+      
+      // [수정] URL에 토큰을 쿼리 파라미터로 추가
+      const downloadUrl = `${url}?token=${encodeURIComponent(token)}`;
+      
+      const a=document.createElement("a"); 
+      a.href=downloadUrl; 
+      a.setAttribute("download",""); 
+      a.click(); 
+    }
+
+    document.getElementById("btnRefresh").onclick = refresh;
+    document.getElementById("btnApply").onclick = applyThresholds;
+    document.getElementById("btnCsv").onclick = ()=> download(`${ORIGIN}/admin/levels/export.csv`);
+    document.getElementById("btnJson").onclick = ()=> download(`${ORIGIN}/admin/levels/export.json`);
+    
+    let ws;
+    function connectWS(){
+      const token = tokenEl.value.trim();
+      if (!token) {
+        setMsg("Token required for WebSocket", false);
+        setTimeout(connectWS, 1500);
+        return;
+      }
+      
+      ws = new WebSocket(`${ADMIN_WS}?token=${encodeURIComponent(token)}`);
+
+      ws.onmessage = (e)=>{
+        try {
+          const msg = JSON.parse(e.data);
+          
+          if(msg.type === "groups") {
+            allGroupsData = msg.data; 
+            render(allGroupsData);
+            console.log("Received new group data via WebSocket.");
+          }
+        } catch (e) {
+          console.warn("WS message parse error", e);
+        }
+      };
+      
+      ws.onclose = (e)=>{
+        if (e.code === 4401) { // 서버에서 보낸 'Invalid token'
+          setMsg("WebSocket: Invalid Token", false);
+        } else {
+          console.log("WS closed, reconnecting...");
+          setTimeout(connectWS, 1500);
+        }
+      };
+      
+      ws.onerror = (e) => {
+        console.warn("WS Error", e);
+        setMsg("WebSocket connection error", false);
+      };
+    }
+
+    connectWS();
+    
+    // 페이지 로드 시 자동 'refresh()' 호출 삭제
+  </script>
+</body>
+</html>

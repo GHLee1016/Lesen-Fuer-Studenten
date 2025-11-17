@@ -1,0 +1,14 @@
+fastapi[all]
+uvicorn[standard]
+pillow
+numpy
+pandas
+sqlalchemy
+aioredis
+websockets
+python-multipart
+opencv-python-headless
+ultralytics
+torch
+torchvision
+torchmetrics
