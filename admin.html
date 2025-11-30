@@ -319,7 +319,11 @@
                 const token = tokenEl.value.trim();
                 if (!token) return;
 
-                if (ws) { ws.close(); clearInterval(keepAliveInterval); }
+                if (ws) {
+                    ws.onclose = null; // [Fix] Prevent triggering retry loop
+                    ws.close();
+                    clearInterval(keepAliveInterval);
+                }
 
                 ws = new WebSocket(`${ADMIN_WS}/admin/ws?token=${encodeURIComponent(token)}`);
 
