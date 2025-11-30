@@ -695,15 +695,11 @@
       }
     }
 
-    // [수정] 초기 로드 실행
-    loadArticle("b1");
-
-    // [수정] 뒤로가기로 복원된 경우(bfcache)에만 재로드
+    // [수정] 페이지 진입 시(초기 로드 + 뒤로가기 복원) 항상 글 로드 시도
     window.addEventListener('pageshow', (event) => {
-      if (event.persisted) {
-        console.log("[pageshow] Restored from cache, reloading...");
-        loadArticle("b1");
-      }
+      console.log("[pageshow] Loading article (persisted:", event.persisted, ")");
+      // 내용이 비어있거나, 캐시 복원인 경우, 또는 그냥 항상 로드 (안전하게)
+      loadArticle("b1");
     });
 
     // [수정] 탭 활성화 시 글이 없으면 재로드
