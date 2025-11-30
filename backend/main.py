@@ -297,10 +297,14 @@ async def ws_endpoint(ws: WebSocket):
 @app.websocket("/admin/ws")
 async def admin_ws(ws: WebSocket, token: str = Query(None)): 
     
+    print(f"🔍 [DEBUG] WS 연결 시도. Token: {token}")
     if not verify_token(token):
+        print(f"❌ [DEBUG] WS 토큰 검증 실패")
         await ws.accept()
         await ws.close(code=4401, reason="Invalid admin token")
         return
+    
+    print(f"✅ [DEBUG] WS 토큰 검증 성공")
 
     await ws.accept()
     ADMIN_CLIENTS.append(ws)
