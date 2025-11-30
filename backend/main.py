@@ -306,15 +306,22 @@ async def admin_ws(ws: WebSocket, token: str = Query(None)):
     
     print(f"✅ [DEBUG] WS 토큰 검증 성공")
 
-    await ws.accept()
-    ADMIN_CLIENTS.append(ws)
-    
     try:
+        await ws.accept()
+        print(f"✅ [DEBUG] Admin WS Accepted")
+        ADMIN_CLIENTS.append(ws)
+        
         await ws.send_json({"type": "groups", "data": groups_by_level()})
+        print(f"✅ [DEBUG] Initial Data Sent")
+        
         while True:
             await ws.receive_text()  # keepalive
+            
     except (WebSocketDisconnect, RuntimeError):
+        print(f"ℹ️ [DEBUG] Admin WS Disconnected (Normal)")
         pass
+    except Exception as e:
+        print(f"❌ [DEBUG] Admin WS Error: {e}")
     finally:
         try: ADMIN_CLIENTS.remove(ws)
         except: pass
