@@ -359,16 +359,17 @@
                     setStatus(false);
                     clearInterval(keepAliveInterval);
 
-                    const reason = e.reason || "Unknown";
                     const code = e.code;
+                    const reason = e.reason || "No reason";
                     console.log(`WS Closed: ${code} - ${reason}`);
 
+                    // onerror가 먼저 발생해서 메시지를 띄웠더라도, 여기서 더 구체적인 원인으로 덮어씀
                     if (code === 4401) {
                         setMsg("WS: Invalid Token (Check & Refresh)", false);
                     } else if (code === 1006) {
                         setMsg("WS: Connection Failed (Server/Network)", false);
                     } else {
-                        setMsg(`WS Closed (${code})`, false);
+                        setMsg(`WS Closed (${code}: ${reason})`, false);
                     }
 
                     if (code !== 4401) {
@@ -382,7 +383,7 @@
                 ws.onerror = (e) => {
                     console.warn("WS Error", e);
                     setStatus(false);
-                    setMsg("WS Error occurred", false);
+                    // onclose에서 더 자세한 에러를 다루므로 여기서는 메시지를 생략하거나 로그만 남김
                 };
             }
 
