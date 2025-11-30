@@ -415,7 +415,13 @@
             });
 
             // --- 이벤트 연결 ---
-            document.getElementById("btnRefresh").onclick = () => { refresh(); connectWS(); };
+            document.getElementById("btnRefresh").onclick = () => {
+                refresh();
+                // [수정] 이미 연결되어 있으면 재연결하지 않음
+                if (!ws || ws.readyState === WebSocket.CLOSED) {
+                    connectWS();
+                }
+            };
             document.getElementById("btnApply").onclick = applyThresholds;
             document.getElementById("btnCsv").onclick = () => download(`${ORIGIN}/admin/levels/export.csv`);
             document.getElementById("btnJson").onclick = () => download(`${ORIGIN}/admin/levels/export.json`);
