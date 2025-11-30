@@ -695,25 +695,58 @@
       }
     }
 
-    // [수정] 스크립트 실행 시 즉시 로드 (안전장치)
-    loadArticle("b1");
+    // [수정] 로딩 상태 관리 (중복 호출 방지)
+    let isArticleLoading = false;
+
+    async function loadArticleSafe(v = "b1") {
+      if (isArticleLoading) {
+        console.log("[loadArticle] Already loading, skipping...");
+        return;
+      }
+      isArticleLoading = true;
+
+      // 로딩 표시
+      const article = document.getElementById('article');
+      if (!article.innerHTML.trim() || article.querySelector('h1')?.textContent === '기사 제목') {
+        article.innerHTML = '<h1 style="color:#2b8cff">Loading...</h1>';
+      }
+
+      let retries = 3;
+      while (retries > 0) {
+        try {
+          await loadArticle(v);
+          console.log("[loadArticle] Success");
+          isArticleLoading = false;
+          return;
+        } catch (e) {
+          console.warn(`[loadArticle] Failed, retries left: ${retries - 1}`, e);
+          retries--;
+          if (retries > 0) await new Promise(r => setTimeout(r, 1000)); // 1초 대기
+        }
+      }
+
+      console.error("[loadArticle] All retries failed");
+      article.innerHTML = `<h1 style="color:red">Error</h1><p>Failed to load article. Please refresh.</p>`;
+      isArticleLoading = false;
+    }
+
+    // [수정] 초기 로드 실행
+    loadArticleSafe("b1");
 
     // [수정] 페이지 진입 시(초기 로드 + 뒤로가기 복원) 항상 글 로드 시도
     window.addEventListener('pageshow', (event) => {
       console.log("[pageshow] Loading article (persisted:", event.persisted, ")");
-      // 내용이 비어있거나, 캐시 복원인 경우, 또는 그냥 항상 로드 (안전하게)
-      loadArticle("b1");
+      loadArticleSafe("b1");
     });
 
     // [수정] 탭 활성화 시 글이 없으면 재로드
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         const article = document.getElementById('article');
-        // 기본 텍스트('기사 제목')가 그대로 있거나 비어있으면 로드 시도
         const title = article.querySelector('h1');
-        if (!article.innerHTML.trim() || (title && title.textContent === '기사 제목')) {
-          console.log("[visibilitychange] Article missing, reloading...");
-          loadArticle("b1");
+        if (!article.innerHTML.trim() || (title && title.textContent === '기사 제목') || (title && title.textContent === 'Loading...')) {
+          console.log("[visibilitychange] Article missing/loading, reloading...");
+          loadArticleSafe("b1");
         }
       }
     });
