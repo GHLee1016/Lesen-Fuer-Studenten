@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Admin — Levels</title>
+    <style>
+        :root {
+            --bg: #f6f7fb;
+            --card: #fff;
+            --line: #e7e9ef;
+            --txt: #111;
+            --sub: #666;
+            --blue: #2b8cff;
+            --green: #00b470;
+            --amber: #ffb300;
+            --red: #e2475d;
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--txt);
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif
+        }
+
+        #wrap {
+            max-width: 1100px;
+            margin: 24px auto;
+            background: var(--card);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, .06)
+        }
+
+        h3,
+        h4 {
+            margin: 8px 0
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin: 8px 0;
+            flex-wrap: wrap
+        }
+
+        input[type="text"],
+        select {
+            height: 34px;
+            padding: 6px 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px
+        }
+
+        input#token {
+            width: 220px
+        }
+
+        button {
+            height: 34px;
+            padding: 0 10px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer
+        }
+
+        button.primary {
+            background: var(--blue);
+            color: #fff;
+            border-color: var(--blue)
+        }
+
+        .cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 12px;
+            min-height: 200px;
+            background: #fff
+        }
+
+        .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px
+        }
+
+        .tag.high {
+            background: rgba(0, 180, 112, .12);
+            color: var(--green);
+            border: 1px solid rgba(0, 180, 112, .35)
+        }
+
+        .tag.medium {
+            background: rgba(255, 179, 0, .12);
+            color: var(--amber);
+            border: 1px solid rgba(255, 179, 0, .35)
+        }
+
+        .tag.low {
+            background: rgba(226, 71, 93, .12);
+            color: var(--red);
+            border: 1px solid rgba(226, 71, 93, .35)
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        th,
+        td {
+            padding: 8px;
+            border-bottom: 1px solid var(--line);
+            font-size: 14px
+        }
+
+        th {
+            text-align: left;
+            color: var(--sub);
+            font-weight: 600
+        }
+
+        .muted {
+            color: var(--sub)
+        }
+
+        @media (max-width:960px) {
+            .cols {
+                grid-template-columns: 1fr
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="wrap">
+        <div class="row">
+            <h3 style="margin-right:auto">Users by Level</h3>
+            <label for="token">Admin Token</label>
+            <input id="token" type="text" placeholder="Enter admin token..." />
+            <button id="btnRefresh">Refresh</button>
+            <button id="btnCsv">Export CSV</button>
+            <button id="btnJson">Export JSON</button>
+        </div>
+
+        <div class="row">
+            <div style="flex:1"></div>
+            <label for="hi">High ≥</label><input id="hi" type="text" value="70" style="width:72px" />
+            <label for="lo">Low << /label><input id="lo" type="text" value="40" style="width:72px" />
+                    <button id="btnApply" class="primary">Apply</button>
+                    <span id="msg" class="muted"></span>
+        </div>
+
+        <div class="cols">
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h4>High</h4><span class="tag high">≥ High</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Last Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="high"></tbody>
+                </table>
+            </div>
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h4>Medium</h4><span class="tag medium">[Low, High]</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Last Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="medium"></tbody>
+                </table>
+            </div>
+            <div class="card">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h4>Low</h4><span class="tag low">
+                        < Low</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Last Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="low"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script>
+        // =============================================
+        // [설정] Render 서버 주소
+        // =============================================
+        const ORIGIN = "https://lesen-fuer-studenten.onrender.com";
+        const ADMIN_WS = "wss://lesen-fuer-studenten.onrender.com";
+        // =============================================
+
+        document.addEventListener("DOMContentLoaded", () => {
+
+            const tokenEl = document.getElementById("token");
+            const hiEl = document.getElementById("hi");
+            const loEl = document.getElementById("lo");
+            const msgEl = document.getElementById("msg");
+            const tbody = {
+                high: document.getElementById("high"),
+                medium: document.getElementById("medium"),
+                low: document.getElementById("low"),
+            };
+            const titleEl = document.querySelector("h3");
+
+            let allGroupsData = {};
+
+            function setMsg(s, ok = true) {
+                msgEl.textContent = s;
+                msgEl.style.color = ok ? "#2b8cff" : "crimson";
+                if (s) setTimeout(() => msgEl.textContent = "", 3000);
+            }
+
+            function setStatus(isOnline) {
+                if (isOnline) {
+                    titleEl.innerHTML = `Users by Level <span style="font-size:14px; color:#00b470; margin-left:8px;">● 실시간 연결됨</span>`;
+                } else {
+                    titleEl.innerHTML = `Users by Level <span style="font-size:14px; color:#e2475d; margin-left:8px;">● 연결 끊김 (재접속 중...)</span>`;
+                }
+            }
+
+            function render(groups) {
+                ["high", "medium", "low"].forEach(lv => {
+                    const rows = (groups[lv] || [])
+                        .map(it => `<tr><td>${it.user_id}</td><td>${it.last_score}</td></tr>`)
+                        .join("");
+                    tbody[lv].innerHTML = rows || `<tr><td class="muted" colspan="2">No users</td></tr>`;
+                });
+            }
+
+            async function fetchJSON(url, opts = {}) {
+                const res = await fetch(url, opts);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            }
+
+            // --- 버튼 기능 ---
+            async function refresh() {
+                const token = tokenEl.value.trim();
+                if (!token) return setMsg("Token required!", false);
+                localStorage.setItem("admin_token", token);
+
+                try {
+                    const data = await fetchJSON(`${ORIGIN}/admin/levels?t=${Date.now()}`, {
+                        headers: { "X-Admin-Token": token }
+                    });
+                    allGroupsData = data;
+                    render(allGroupsData);
+                    setMsg("Refreshed!", true);
+                } catch (e) {
+                    console.error(e);
+                    setMsg("Connection failed or Invalid Token", false);
+                }
+            }
+
+            async function applyThresholds() {
+                const token = tokenEl.value.trim();
+                if (!token) return setMsg("Token required!", false);
+
+                const hi = parseFloat(hiEl.value), lo = parseFloat(loEl.value);
+                try {
+                    const res = await fetch(`${ORIGIN}/admin/levels/config`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", "X-Admin-Token": token },
+                        body: JSON.stringify({ high: hi, low: lo })
+                    });
+                    if (res.ok) setMsg("Updated!", true);
+                    else throw new Error("Update failed");
+                } catch (e) {
+                    setMsg("Update failed", false);
+                }
+            }
+
+            function download(url) {
+                const token = tokenEl.value.trim();
+                if (!token) return setMsg("Token required!", false);
+                const downloadUrl = `${url}?token=${encodeURIComponent(token)}`;
+                const a = document.createElement("a");
+                a.href = downloadUrl;
+                a.setAttribute("download", "");
+                a.click();
+            }
+
+            // --- 웹소켓 ---
+            let ws = null;
+            let keepAliveInterval = null;
+
+            function connectWS() {
+                const token = tokenEl.value.trim();
+                if (!token) return;
+
+                if (ws) { ws.close(); clearInterval(keepAliveInterval); }
+
+                ws = new WebSocket(`${ADMIN_WS}/admin/ws?token=${encodeURIComponent(token)}`);
+
+                ws.onopen = () => {
+                    console.log("Admin WS Connected");
+                    setStatus(true);
+
+                    keepAliveInterval = setInterval(() => {
+                        if (ws.readyState === 1) ws.send("ping");
+                    }, 30000);
+                };
+
+                ws.onmessage = (e) => {
+                    try {
+                        const msg = JSON.parse(e.data);
+                        if (msg.type === "groups") {
+                            console.log("🔔 실시간 데이터 업데이트 수신!");
+
+                            // [Visual Feedback] Flash title
+                            const originalColor = titleEl.style.color;
+                            titleEl.style.color = "#2b8cff";
+                            setTimeout(() => titleEl.style.color = originalColor, 500);
+
+                            allGroupsData = msg.data;
+                            render(allGroupsData);
+                        }
+                    } catch (e) { console.warn(e); }
+                };
+
+                ws.onclose = (e) => {
+                    setStatus(false);
+                    clearInterval(keepAliveInterval);
+
+                    if (e.code === 4401) {
+                        setMsg("WS: Invalid Token (Check & Refresh)", false);
+                    } else {
+                        console.log("WS closed, retrying in 3s...");
+                        setTimeout(() => {
+                            if (tokenEl.value.trim()) connectWS();
+                        }, 3000);
+                    }
+                };
+
+                ws.onerror = (e) => {
+                    console.warn("WS Error", e);
+                    setStatus(false);
+                };
+            }
+
+            // ==========================================
+            // [추가] 뒤로 가기 / 탭 전환 시 재연결 로직
+            // ==========================================
+
+            // 1. 브라우저 뒤로 가기로 페이지에 돌아왔을 때 ('pageshow')
+            window.addEventListener('pageshow', (event) => {
+                if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+                    console.log("♻️ 페이지 복원됨: 웹소켓 재연결 시도");
+                    const savedToken = localStorage.getItem("admin_token");
+                    if (savedToken) {
+                        tokenEl.value = savedToken;
+                        connectWS();
+                        refresh(); // 데이터 갱신
+                    }
+                }
+            });
+
+            // 2. 브라우저 탭을 갔다 왔을 때 ('visibilitychange')
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+                        console.log("👁️ 탭 활성화됨: 웹소켓 재연결 시도");
+                        const savedToken = localStorage.getItem("admin_token");
+                        if (savedToken) connectWS();
+                    }
+                }
+            });
+
+            // --- 이벤트 연결 ---
+            document.getElementById("btnRefresh").onclick = () => { refresh(); connectWS(); };
+            document.getElementById("btnApply").onclick = applyThresholds;
+            document.getElementById("btnCsv").onclick = () => download(`${ORIGIN}/admin/levels/export.csv`);
+            document.getElementById("btnJson").onclick = () => download(`${ORIGIN}/admin/levels/export.json`);
+
+            // --- 초기 실행 ---
+            const savedToken = localStorage.getItem("admin_token");
+            if (savedToken) {
+                tokenEl.value = savedToken;
+                refresh();
+                connectWS();
+            }
+        });
+    </script>
+</body>
+
+</html>
