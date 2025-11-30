@@ -387,13 +387,25 @@
             });
 
             // 2. 브라우저 탭을 갔다 왔을 때 ('visibilitychange')
+            // 2. 브라우저 탭을 갔다 왔을 때 ('visibilitychange')
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
-                    if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-                        console.log("👁️ 탭 활성화됨: 웹소켓 재연결 시도");
-                        const savedToken = localStorage.getItem("admin_token");
-                        if (savedToken) connectWS();
-                    }
+                    console.log("👁️ 탭 활성화됨: 상태 점검");
+                    // 약간의 딜레이 후 재연결 시도 (네트워크 안정화 대기)
+                    setTimeout(() => {
+                        if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+                            console.log("🔄 웹소켓 재연결 시도...");
+                            const savedToken = localStorage.getItem("admin_token");
+                            if (savedToken) {
+                                connectWS();
+                                refresh(); // 데이터도 한 번 갱신
+                            }
+                        } else {
+                            // 연결은 되어있지만 죽었을 수도 있으므로 ping 보내보기
+                            console.log("✅ 연결 유지됨 (Ping 확인)");
+                            ws.send("ping");
+                        }
+                    }, 500);
                 }
             });
 
