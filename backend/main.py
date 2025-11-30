@@ -304,11 +304,12 @@ async def admin_ws(ws: WebSocket, token: str = Query(None)):
 
     await ws.accept()
     ADMIN_CLIENTS.append(ws)
-    await ws.send_json({"type": "groups", "data": groups_by_level()})
+    
     try:
+        await ws.send_json({"type": "groups", "data": groups_by_level()})
         while True:
             await ws.receive_text()  # keepalive
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
         try: ADMIN_CLIENTS.remove(ws)
