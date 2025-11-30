@@ -154,6 +154,7 @@
             <label for="token">Admin Token</label>
             <input id="token" type="text" placeholder="Enter admin token..." />
             <button id="btnRefresh">Refresh</button>
+            <button id="btnReconnect" style="color:#e2475d; border-color:#e2475d;">Reconnect WS</button>
             <button id="btnCsv">Export CSV</button>
             <button id="btnJson">Export JSON</button>
         </div>
@@ -423,7 +424,15 @@
                     connectWS();
                 } else {
                     console.log("✅ Refresh: WS 연결 유지됨");
+                    // 연결되어 있으면 핑 한번 보내서 확인
+                    ws.send("ping");
                 }
+            };
+            // [추가] 강제 재연결 버튼
+            document.getElementById("btnReconnect").onclick = () => {
+                console.log("🔌 강제 재연결 시도");
+                connectWS();
+                refresh();
             };
             document.getElementById("btnApply").onclick = applyThresholds;
             document.getElementById("btnCsv").onclick = () => download(`${ORIGIN}/admin/levels/export.csv`);
