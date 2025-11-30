@@ -468,9 +468,36 @@
           console.warn("WS message error", e, ev.data);
         }
       };
-      ws.onclose = () => console.log("ws closed");
+      ws.onclose = (e) => {
+        console.log("ws closed", e);
+        // [수정] 재연결 로직
+        if (!document.hidden) {
+          console.log("♻️ 연결 끊김 감지, 3초 후 재연결 시도...");
+          setTimeout(() => {
+            if (!ws || ws.readyState === WebSocket.CLOSED) connect();
+          }, 3000);
+        }
+      };
       ws.onerror = (e) => console.warn("ws error", e);
+
+      // [추가] Keep-Alive Ping
+      if (ws.keepAliveTimer) clearInterval(ws.keepAliveTimer);
+      ws.keepAliveTimer = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30000); // 30초마다 핑
     }
+
+    // [추가] 탭 활성화 시 연결 상태 확인
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+          console.log("👁️ 탭 활성화: 재연결 시도");
+          connect();
+        }
+      }
+    });
 
     // --- Gaze Prediction & Fusion ---
 
