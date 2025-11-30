@@ -417,9 +417,12 @@
             // --- 이벤트 연결 ---
             document.getElementById("btnRefresh").onclick = () => {
                 refresh();
-                // [수정] 이미 연결되어 있으면 재연결하지 않음
-                if (!ws || ws.readyState === WebSocket.CLOSED) {
+                // [수정] 연결이 끊겨있거나 끊기는 중이면 재연결
+                if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
+                    console.log("🔄 Refresh: WS 재연결 시도");
                     connectWS();
+                } else {
+                    console.log("✅ Refresh: WS 연결 유지됨");
                 }
             };
             document.getElementById("btnApply").onclick = applyThresholds;
