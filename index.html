@@ -462,7 +462,10 @@
           console.warn("WS message error", e, ev.data);
         }
       };
-      ws.onclose = () => console.log("ws closed");
+      ws.onclose = () => {
+        console.log("ws closed. Reconnecting in 3s...");
+        setTimeout(connect, 3000);
+      };
       ws.onerror = (e) => console.warn("ws error", e);
     }
 
@@ -997,7 +1000,7 @@
           alert("점수가 전송되었습니다!");
         } else {
           console.warn("[Frontend] WS not ready. State:", ws ? ws.readyState : "null");
-          alert("서버와 연결되어 있지 않습니다. 페이지를 새로고침하거나 'Connect'를 다시 눌러주세요.");
+          alert("서버와 연결이 끊어졌습니다. 재연결 중이니 3초 뒤에 다시 시도해주세요.");
         }
       } catch (e) {
         console.error("Score send failed", e);
