@@ -319,6 +319,11 @@
 
       ws = new WebSocket(`${ADMIN_WS}/admin/ws?token=${encodeURIComponent(token)}`);
 
+      // [신규] Keep-Alive (30초마다 핑 전송)
+      setInterval(() => {
+        if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "ping" }));
+      }, 30000);
+
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data);
