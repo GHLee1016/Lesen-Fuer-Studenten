@@ -317,7 +317,7 @@
         return;
       }
 
-      ws = new WebSocket(`${ADMIN_WS}?token=${encodeURIComponent(token)}`);
+      ws = new WebSocket(`${ADMIN_WS}/admin/ws?token=${encodeURIComponent(token)}`);
 
       ws.onmessage = (e) => {
         try {
