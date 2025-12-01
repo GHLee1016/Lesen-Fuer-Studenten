@@ -537,6 +537,16 @@
         return enableMouseFallback();
       }
       try {
+        // [수정] 기존 WebGazer 인스턴스가 있다면 종료 (재진입 시 무한 로딩 방지)
+        try {
+          if (window.webgazer.isReady()) {
+            console.log("[gaze] Stopping existing WebGazer instance...");
+            window.webgazer.end();
+            // 잠시 대기 (카메라 해제 시간 확보)
+            await new Promise(r => setTimeout(r, 500));
+          }
+        } catch (e) { console.warn("[gaze] cleanup error", e); }
+
         window.webgazer
           .setRegression('ridge')
           .showVideoPreview(false)
