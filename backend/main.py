@@ -246,9 +246,11 @@ async def ws_endpoint(ws: WebSocket):
                 SESSIONS[user_id]["points"].append((t, x, y))
             
             elif typ == "score":
+                print(f"[DEBUG] Received score payload: {data}") # 디버그 로그 추가
                 t = int(data["t"]); s = float(data["score"])
                 SESSIONS[user_id]["scores"].append(data) 
                 SESSIONS[user_id]["last_score"] = s
+                print(f"[DEBUG] Updated session {user_id} last_score to {s}") # 디버그 로그 추가
                 # [수정] 점수 수신 시, 갱신된 그룹 데이터를 관리자에게 전송
                 await broadcast_admin({"type": "groups", "data": groups_by_level()})
             
