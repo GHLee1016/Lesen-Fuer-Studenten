@@ -1,5 +1,5 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, Query, BackgroundTasks
-from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Dict, List, Optional, Tuple 
 import io, csv, json, time, base64
@@ -29,6 +29,24 @@ except ImportError:
 ART_DIR = Path(__file__).parent / "articles"
 
 app = FastAPI()
+
+# =============================================
+# ========== [신규] 정적 파일 서빙 (Frontend) ==========
+# =============================================
+BASE_DIR = Path(__file__).parent.parent
+
+@app.get("/")
+async def serve_index():
+    return FileResponse(BASE_DIR / "index.html")
+
+@app.get("/admin")
+async def serve_admin():
+    return FileResponse(BASE_DIR / "admin.html")
+
+@app.get("/favicon.ico")
+async def serve_favicon():
+    return FileResponse(BASE_DIR / "frontend/favicon.ico")
+# =============================================
 
 # =============================================
 # ========== [수정] CORS 설정 ==========
