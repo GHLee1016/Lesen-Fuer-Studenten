@@ -960,6 +960,12 @@
       if (!isMeasuring) return;
       setMeasureState(false); // Stop measuring
 
+      // [수정] 측정 종료 시 비디오 전송 중단 (점수 전송 대역폭 확보)
+      if (frameLoopInterval) {
+        clearInterval(frameLoopInterval);
+        frameLoopInterval = null;
+      }
+
       const durationMs = Math.max(0, (measureStartAt ? (measureEndAt - measureStartAt) : 0));
       // Ensure at least one sample
       if (gazePath.length === 0 && Number.isFinite(currentGaze.x) && Number.isFinite(currentGaze.y)) {
