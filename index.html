@@ -273,6 +273,9 @@
     let measureStartAt = null;
     let measureEndAt = null;
 
+    // [Persistence] Key for localStorage
+    const STORAGE_KEY = "lesen_session_v1";
+
     let showPath = true;
     let showHeatmap = true;
     let currentGaze = { x: 0, y: 0 };
@@ -287,6 +290,82 @@
     let gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
 
     let calibMatrix = null; // Affine correction matrix
+
+    // --- Persistence Functions ---
+    function saveSessionState() {
+      const state = {
+        isMeasuring,
+        measureStartAt,
+        measureEndAt,
+        gazePath,
+        gazeHeatmap,
+        calibMatrix,
+        // Save quiz state if needed, or just let user re-enter
+        timestamp: Date.now()
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        // console.log("[Persistence] Saved state", state.timestamp);
+      } catch (e) {
+        console.warn("[Persistence] Save failed", e);
+      }
+    }
+
+    function restoreSessionState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return;
+        const state = JSON.parse(raw);
+
+        // Restore variables
+        // Only restore if data is relatively fresh (e.g. < 24 hours)
+        if (Date.now() - state.timestamp > 24 * 60 * 60 * 1000) {
+          console.log("[Persistence] State too old, clearing");
+          localStorage.removeItem(STORAGE_KEY);
+          return;
+        }
+
+        isMeasuring = state.isMeasuring;
+        measureStartAt = state.measureStartAt;
+        measureEndAt = state.measureEndAt;
+        gazePath = state.gazePath || [];
+        gazeHeatmap = state.gazeHeatmap || Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+        calibMatrix = state.calibMatrix || null;
+
+        console.log("[Persistence] Restored state", state);
+
+        // If we were measuring, or finished measuring but didn't send, we should show the UI accordingly.
+        if (isMeasuring) {
+          // Resume measuring UI
+          const startBtn = document.getElementById('startMeasureBtn');
+          const stopBtn = document.getElementById('stopMeasureBtn');
+          if (startBtn) startBtn.disabled = true;
+          if (stopBtn) stopBtn.disabled = false;
+          console.log("Resuming measurement...");
+        } else if (measureEndAt && gazePath.length > 0) {
+          // We had finished. Show the modal again?
+          // Or just let the user click "Stop" again? 
+          // Better to show the modal if we have a result.
+          console.log("Restored finished session. Showing results...");
+          // We need to wait for DOM to be fully ready or just call the show function
+          // But we might not want to pop up the modal immediately on refresh if the user didn't want it.
+          // Let's just restore the data. The user can click "Stop" (which might be enabled if we mess up state) 
+          // or we can provide a "Restore Previous Result" button?
+          // Actually, if measureEndAt is set, it means we finished.
+          // Let's trigger the stop logic to show the modal.
+          setTimeout(() => {
+            const stopBtn = document.getElementById('stopMeasureBtn');
+            if (stopBtn) stopBtn.click();
+          }, 500);
+        }
+
+      } catch (e) {
+        console.warn("[Persistence] Restore failed", e);
+      }
+    }
+
+    // Auto-save every 2 seconds
+    setInterval(saveSessionState, 2000);
 
     // --- Core Functions ---
 
@@ -317,6 +396,7 @@
       } else {
         measureEndAt = Date.now();
       }
+      saveSessionState();
     }
 
     userIdInput.value = localStorage.getItem("gaze_user_id") || `user_${Math.random().toString(36).slice(2, 7)}`;
@@ -344,7 +424,10 @@
       }
     }
     new ResizeObserver(resizeCanvas).observe(wrap);
-    window.addEventListener('load', resizeCanvas);
+    window.addEventListener('load', () => {
+      resizeCanvas();
+      restoreSessionState();
+    });
     window.addEventListener('resize', resizeCanvas);
 
     function drawOverlay() {
@@ -409,19 +492,28 @@
       }
     }
 
+    let connectTimer = null;
+    let isConnecting = false;
+
     function connect() {
+      if (isConnecting) return;
       const uid = userIdInput.value.trim();
       if (!uid) return alert("User ID를 입력하세요.");
       localStorage.setItem("gaze_user_id", uid);
 
+      // Prevent multiple connection attempts
+      isConnecting = true;
       try { ws && ws.close(); } catch (e) { }
 
+      console.log(`[WS] Connecting as ${uid}...`);
       ws = new WebSocket(`${WSS}/ws?user_id=${encodeURIComponent(uid)}`);
-      // We are sending binary video frames
       ws.binaryType = "blob";
 
       ws.onopen = async () => {
-        console.log("ws open");
+        console.log("[WS] Connected");
+        isConnecting = false;
+        if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
+
         // Get current user list
         try {
           const r = await fetch(`${API}/users`, { cache: "no-store" });
@@ -430,29 +522,27 @@
             usersDiv.innerHTML = (js.users || []).map(u => `<div>${u}</div>`).join('');
           }
         } catch { }
+
+        // Start Keep-Alive Ping (Every 10s)
+        if (ws.keepAliveTimer) clearInterval(ws.keepAliveTimer);
+        ws.keepAliveTimer = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          }
+        }, 10000);
       };
 
       ws.onmessage = (ev) => {
         try {
-          // All our messages from server are JSON
           const msg = JSON.parse(ev.data);
           if (msg.type === 'users') {
             usersDiv.innerHTML = msg.users.map(u => `<div>${u}</div>`).join('');
           }
-          // YOLO 좌표 처리 로직
           else if (msg.type === 'server_gaze') {
-            // msg.x, msg.y는 *비디오 프레임* 기준 좌표 (예: 0-640)
-
-            // 1. WebGazer의 유틸리티를 사용해 "비디오 좌표"를 "화면 좌표(viewport)"로 변환
             const screenCoords = window.webgazer.util.videoPxToScreenPx(msg.x, msg.y);
-            if (!screenCoords) return; // 변환 실패 시 (예: 모델 로드 중)
-
+            if (!screenCoords) return;
             const [screenX, screenY] = screenCoords;
-
-            // 2. toContainer를 사용해 "화면 좌표"를 "캔버스 좌표"로 변환
             const [containerX, containerY] = toContainer(screenX, screenY);
-
-            // 3. 융합을 위해 'lastServerGaze' 변수를 갱신
             lastServerGaze = {
               x: containerX,
               y: containerY,
@@ -460,40 +550,36 @@
               t: msg.t
             };
           }
-          else if (msg.type === 'server_features') {
-            // Fallback for OpenCV test (if server sends this)
-            // console.log(`[Server]: faces=${msg.face_count}, eyes=${msg.eye_count}`);
-          }
         } catch (e) {
           console.warn("WS message error", e, ev.data);
         }
       };
+
       ws.onclose = (e) => {
-        console.log("ws closed", e);
-        // [수정] 재연결 로직
+        console.log("[WS] Closed", e.code, e.reason);
+        isConnecting = false;
+        if (ws.keepAliveTimer) clearInterval(ws.keepAliveTimer);
+
+        // Retry forever if not intentional close
         if (!document.hidden) {
-          console.log("♻️ 연결 끊김 감지, 3초 후 재연결 시도...");
-          setTimeout(() => {
-            if (!ws || ws.readyState === WebSocket.CLOSED) connect();
-          }, 3000);
+          console.log("♻️ Connection lost. Retrying in 2s...");
+          if (connectTimer) clearTimeout(connectTimer);
+          connectTimer = setTimeout(connect, 2000);
         }
       };
-      ws.onerror = (e) => console.warn("ws error", e);
 
-      // [추가] Keep-Alive Ping
-      if (ws.keepAliveTimer) clearInterval(ws.keepAliveTimer);
-      ws.keepAliveTimer = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'ping' }));
-        }
-      }, 30000); // 30초마다 핑
+      ws.onerror = (e) => {
+        console.warn("[WS] Error", e);
+        isConnecting = false;
+      };
     }
 
     // [추가] 탭 활성화 시 연결 상태 확인
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') {
         if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {
-          console.log("👁️ 탭 활성화: 재연결 시도");
+          console.log("👁️ Tab visible: Reconnecting...");
+          if (connectTimer) clearTimeout(connectTimer);
           connect();
         }
       }
@@ -683,9 +769,10 @@
 
         if (typeof resizeCanvas === 'function') resizeCanvas();
 
-        // 버퍼 초기화
-        gazePath = [];
-        gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+        // [Persistence] Do NOT reset buffers here. 
+        // They are reset in setMeasureState(true), and we want to allow restoreSessionState to work.
+        // gazePath = [];
+        // gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
         drawOverlay();
 
       } catch (e) {
@@ -783,14 +870,38 @@
     let calibSamples = [];
     let currentPointSet = gridPointsNorm;
 
+    function getCalibPoint(nx, ny) {
+      // [Calibration] Constrain to text area (max 900px)
+      // Center the 900px area within the canvas if canvas is wider
+      const MAX_WIDTH = 900;
+      const w = canvas.width;
+      const h = canvas.height;
+
+      let effectiveW = w;
+      let offsetX = 0;
+
+      if (w > MAX_WIDTH) {
+        effectiveW = MAX_WIDTH;
+        offsetX = (w - MAX_WIDTH) / 2;
+      }
+
+      // Apply padding to avoid edges
+      const PADDING = 40;
+      const drawW = effectiveW - PADDING * 2;
+      const drawH = h - PADDING * 2;
+
+      const x = offsetX + PADDING + nx * drawW;
+      const y = PADDING + ny * drawH;
+      return [x, y];
+    }
+
     function drawCalibFrame() {
       if (!calibCtx) return;
       calibCtx.clearRect(0, 0, calibCanvas.width, calibCanvas.height);
       // Draw all faint points
       calibCtx.fillStyle = 'rgba(0,0,0,.08)';
       for (const [nx, ny] of currentPointSet) {
-        const x = nx * calibCanvas.width;
-        const y = ny * calibCanvas.height;
+        const [x, y] = getCalibPoint(nx, ny);
         calibCtx.beginPath();
         calibCtx.arc(x, y, 6, 0, Math.PI * 2);
         calibCtx.fill();
@@ -798,8 +909,7 @@
       // Draw current active point
       if (calibStep < currentPointSet.length) {
         const [nx, ny] = currentPointSet[calibStep];
-        const x = nx * calibCanvas.width;
-        const y = ny * calibCanvas.height;
+        const [x, y] = getCalibPoint(nx, ny);
         calibCtx.fillStyle = '#2b8cff';
         calibCtx.beginPath();
         calibCtx.arc(x, y, 10, 0, Math.PI * 2);
@@ -883,8 +993,7 @@
           // Visual feedback on click
           if (calibCtx) {
             const [nx, ny] = currentPointSet[calibStep];
-            const targetX = nx * canvas.width;
-            const targetY = ny * canvas.height;
+            const [targetX, targetY] = getCalibPoint(nx, ny);
             calibCtx.fillStyle = '#00b470'; // Green flash
             calibCtx.beginPath();
             calibCtx.arc(targetX, targetY, 12, 0, Math.PI * 2);
@@ -975,8 +1084,7 @@
       while (calibStep < currentPointSet.length) {
         drawCalibFrame();
         const [nx, ny] = currentPointSet[calibStep];
-        const targetX = nx * canvas.width;
-        const targetY = ny * canvas.height;
+        const [targetX, targetY] = getCalibPoint(nx, ny);
         const sample = await collectGazeOnTarget(targetX, targetY);
         calibSamples.push(sample);
         calibStep++;
@@ -990,8 +1098,7 @@
       while (calibStep < currentPointSet.length) {
         drawCalibFrame();
         const [nx, ny] = currentPointSet[calibStep];
-        const targetX = nx * canvas.width;
-        const targetY = ny * canvas.height;
+        const [targetX, targetY] = getCalibPoint(nx, ny);
         const sample = await collectGazeOnTarget(targetX, targetY);
         calibSamples.push(sample);
         calibStep++;
@@ -1088,6 +1195,15 @@
 
       console.log("📤 [DEBUG] 점수 전송 완료:", combinedScore);
       alert("서버로 점수를 전송했습니다!");
+
+      // [Persistence] Clear saved session on success
+      localStorage.removeItem(STORAGE_KEY);
+      // Reset local state too
+      gazePath = [];
+      gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+      measureStartAt = null;
+      measureEndAt = null;
+      drawOverlay();
 
       // 5. 버튼 기능 변경
       modalClose.textContent = "닫기";
