@@ -986,6 +986,7 @@
       // 5. Send scores to server
       try {
         if (ws && ws.readyState === 1) {
+          console.log("[Frontend] Sending score payload...");
           ws.send(JSON.stringify({
             type: 'score',
             t: measureEndAt || Date.now(),
@@ -993,9 +994,14 @@
             gaze_score: gazeScore,  // For storage
             quiz_score: quizScore   // For storage
           }));
+          alert("점수가 전송되었습니다!");
+        } else {
+          console.warn("[Frontend] WS not ready. State:", ws ? ws.readyState : "null");
+          alert("서버와 연결되어 있지 않습니다. 페이지를 새로고침하거나 'Connect'를 다시 눌러주세요.");
         }
       } catch (e) {
         console.error("Score send failed", e);
+        alert("점수 전송 중 오류가 발생했습니다.");
       }
 
       // 6. [핵심] 버튼을 '닫기' 기능으로 변경
