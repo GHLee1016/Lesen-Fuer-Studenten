@@ -228,16 +228,15 @@
   <script type="module">
     // --- API Setup ---
     // =============================================
-    // ========== [수정] API 주소 변경 ==========
+    // ========== [수정] API 주소 자동 감지 ==========
     // =============================================
-    let API = "https://lesen-fuer-studenten.onrender.com"; // HTTPS -> HTTP, 8443 -> 8000
-    let WSS = "wss://lesen-fuer-studenten.onrender.com"; // ws://
+    const API = window.location.origin; // 예: http://localhost:8000
+    const WSS = API.replace(/^http/, 'ws'); // http -> ws, https -> wss
+    console.log("[api] using", API);
     // =============================================
-    function setAPI(base) {
-      API = base;
-      WSS = base.replace("https", "wss").replace("http", "ws");
-      console.log("[api] using", API);
-    }
+
+    // setAPI 함수는 더 이상 필요하지 않지만, 호환성을 위해 남겨두거나 삭제할 수 있습니다.
+    // 여기서는 삭제하고 직접 변수를 사용합니다.
 
     // --- DOM Elements ---
     const wrap = document.getElementById('wrap');
