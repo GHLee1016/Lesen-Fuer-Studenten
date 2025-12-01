@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Depends, Header, Query, BackgroundTasks
 from fastapi.responses import StreamingResponse, JSONResponse, HTMLResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.concurrency import run_in_threadpool # [신규] 비동기 처리를 위한 임포트
 from typing import Dict, List, Optional, Tuple 
 import io, csv, json, time, base64
 from pathlib import Path
@@ -226,6 +227,7 @@ async def ws_endpoint(ws: WebSocket):
     CLIENTS[user_id] = ws
     ensure_session(user_id)
     SESSIONS[user_id]["variant"] = variant 
+    print(f"[WS] Client connected: {user_id}") # [로그] 연결
     try:
         await broadcast_users()
         await broadcast_admin({"type": "groups", "data": groups_by_level()})
@@ -246,16 +248,16 @@ async def ws_endpoint(ws: WebSocket):
                 SESSIONS[user_id]["points"].append((t, x, y))
             
             elif typ == "score":
-                print(f"[DEBUG] Received score payload: {data}") # 디버그 로그 추가
+                print(f"[DEBUG] Received score payload: {data}")
                 t = int(data["t"]); s = float(data["score"])
                 SESSIONS[user_id]["scores"].append(data) 
                 SESSIONS[user_id]["last_score"] = s
-                print(f"[DEBUG] Updated session {user_id} last_score to {s}") # 디버그 로그 추가
-                # [수정] 점수 수신 시, 갱신된 그룹 데이터를 관리자에게 전송
+                print(f"[DEBUG] Updated session {user_id} last_score to {s}")
                 await broadcast_admin({"type": "groups", "data": groups_by_level()})
             
             elif typ == "video_frame_bytes":
-                gaze_x, gaze_y = detect_gaze_yolo(data)
+                # [수정] Blocking 연산을 스레드풀에서 실행하여 서버 멈춤 방지
+                gaze_x, gaze_y = await run_in_threadpool(detect_gaze_yolo, data)
                 
                 if gaze_x is not None and gaze_y is not None:
                     await ws.send_json({
