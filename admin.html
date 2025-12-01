@@ -150,7 +150,8 @@
 <body>
     <div id="wrap">
         <div class="row">
-            <h3 style="margin-right:auto">Users by Level</h3>
+            <h3 style="margin-right:auto">Users by Level <span id="lastUpdated"
+                    style="font-size:12px; color:#666; font-weight:normal"></span></h3>
             <label for="token">Admin Token</label>
             <input id="token" type="text" placeholder="Enter admin token..." />
             <button id="btnRefresh">Refresh</button>
@@ -258,6 +259,8 @@
                         .join("");
                     tbody[lv].innerHTML = rows || `<tr><td class="muted" colspan="2">No users</td></tr>`;
                 });
+                const now = new Date();
+                document.getElementById("lastUpdated").textContent = `(Last update: ${now.toLocaleTimeString()})`;
             }
 
             async function fetchJSON(url, opts = {}) {
@@ -316,35 +319,42 @@
             // --- 웹소켓 ---
             let ws = null;
             let keepAliveInterval = null;
+            let connectTimer = null;
+            let isConnecting = false;
 
             function connectWS() {
+                if (isConnecting) return;
                 const token = tokenEl.value.trim();
                 if (!token) return;
 
+                isConnecting = true;
                 if (ws) {
-                    ws.onclose = null; // [Fix] Prevent triggering retry loop
+                    ws.onclose = null;
                     ws.close();
                     clearInterval(keepAliveInterval);
                 }
 
+                console.log("[Admin WS] Connecting...");
                 ws = new WebSocket(`${ADMIN_WS}/admin/ws?token=${encodeURIComponent(token)}`);
 
                 ws.onopen = () => {
-                    console.log("Admin WS Connected");
+                    console.log("[Admin WS] Connected");
+                    isConnecting = false;
                     setStatus(true);
+                    if (connectTimer) { clearTimeout(connectTimer); connectTimer = null; }
 
+                    if (keepAliveInterval) clearInterval(keepAliveInterval);
                     keepAliveInterval = setInterval(() => {
                         if (ws.readyState === 1) ws.send("ping");
-                    }, 30000);
+                    }, 10000); // 10s ping
                 };
 
                 ws.onmessage = (e) => {
                     try {
                         const msg = JSON.parse(e.data);
                         if (msg.type === "groups") {
-                            console.log("🔔 실시간 데이터 업데이트 수신!");
-
-                            // [Visual Feedback] Flash title
+                            console.log("🔔 Data Update");
+                            // Flash title
                             const originalColor = titleEl.style.color;
                             titleEl.style.color = "#2b8cff";
                             setTimeout(() => titleEl.style.color = originalColor, 500);
@@ -357,33 +367,30 @@
 
                 ws.onclose = (e) => {
                     setStatus(false);
-                    clearInterval(keepAliveInterval);
+                    isConnecting = false;
+                    if (keepAliveInterval) clearInterval(keepAliveInterval);
 
                     const code = e.code;
                     const reason = e.reason || "No reason";
-                    console.log(`WS Closed: ${code} - ${reason}`);
+                    console.log(`[Admin WS] Closed: ${code} - ${reason}`);
 
-                    // onerror가 먼저 발생해서 메시지를 띄웠더라도, 여기서 더 구체적인 원인으로 덮어씀
                     if (code === 4401) {
-                        setMsg("WS: Invalid Token (Check & Refresh)", false);
-                    } else if (code === 1006) {
-                        setMsg("WS: Connection Failed (Server/Network)", false);
-                    } else {
-                        setMsg(`WS Closed (${code}: ${reason})`, false);
+                        setMsg("WS: Invalid Token", false);
+                        return; // Do not retry if token is invalid
                     }
 
-                    if (code !== 4401) {
-                        console.log("WS closed, retrying in 3s...");
-                        setTimeout(() => {
-                            if (tokenEl.value.trim()) connectWS();
-                        }, 3000);
+                    // Retry forever
+                    if (!document.hidden) {
+                        console.log("♻️ Connection lost. Retrying in 2s...");
+                        if (connectTimer) clearTimeout(connectTimer);
+                        connectTimer = setTimeout(connectWS, 2000);
                     }
                 };
 
                 ws.onerror = (e) => {
-                    console.warn("WS Error", e);
+                    console.warn("[Admin WS] Error", e);
                     setStatus(false);
-                    // onclose에서 더 자세한 에러를 다루므로 여기서는 메시지를 생략하거나 로그만 남김
+                    isConnecting = false;
                 };
             }
 
