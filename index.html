@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lesen Für Studenten</title>
+
+  <link rel="icon" type="image/svg+xml"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%232b8cff'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-size='32' fill='white'%3EG%3C/text%3E%3C/svg%3E">
+
+  <script src="https://webgazer.cs.brown.edu/webgazer.js" defer></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #f6f7fb;
+    }
+
+    /* 2-칼럼(Grid): 본문(최대 900px) + 우측 패널(300px) */
+    .page {
+      display: grid;
+      grid-template-columns: minmax(0, 900px) 300px;
+      gap: 16px;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    /* 본문 */
+    #wrap {
+      position: relative;
+      background: #fff;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, .06);
+      overflow: visible;
+    }
+
+    #article {
+      line-height: 1.7;
+      font-size: 18px;
+      color: #111;
+    }
+
+    #article h1 {
+      font-size: 40px;
+      margin: 16px 0 24px;
+    }
+
+    /* 오버레이 캔버스 */
+    #overlay {
+      position: absolute;
+      left: 16px;
+      top: 16px;
+      pointer-events: none;
+      /* 텍스트 선택 방해 금지 */
+      z-index: 5;
+    }
+
+    /* 우측 패널(sticky) */
+    #side {
+      position: sticky;
+      top: 16px;
+      align-self: start;
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 12px;
+      border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
+      width: 300px;
+      z-index: 10;
+    }
+
+    #users {
+      max-height: 200px;
+      overflow: auto;
+      border: 1px solid #eee;
+      padding: 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    input[type="text"] {
+      flex: 1 1 auto;
+    }
+
+    button {
+      margin-right: 8px;
+      cursor: pointer;
+    }
+
+    /* 퀴즈 스타일 */
+    #quizContainer {
+      border: 1px solid #eee;
+      border-radius: 8px;
+      padding: 12px;
+      margin: 16px 0;
+    }
+
+    #quizContainer p {
+      margin: 0 0 8px;
+      font-weight: 600;
+    }
+
+    .quizOption {
+      margin-bottom: 6px;
+    }
+
+    .quizOption label {
+      margin-left: 6px;
+    }
+
+    /* 좁은 화면 폴백: 한 칼럼 */
+    @media (max-width: 1220px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      #side {
+        position: static;
+        width: auto;
+        margin-top: 8px;
+      }
+    }
+
+    /* 가로 스크롤 방지 */
+    html,
+    body {
+      overflow-x: hidden;
+    }
+
+    /* 프레임 캡처용 숨겨진 캔버스 */
+    #hiddenFrameCanvas {
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 프레임 캡처용 숨겨진 캔버스 -->
+  <canvas id="hiddenFrameCanvas"></canvas>
+
+  <div class="page">
+    <div id="wrap">
+      <div id="article">
+        <h1>기사 제목</h1>
+        <p>여기에 긴 텍스트가 있다고 가정합니다. 스크롤해도 오버레이가 텍스트 위에 남도록 wrap 기준 좌표계를 사용합니다.</p>
+        <p>WebGazer 또는 YOLOv8+ResNet 파이프라인에서 나온 시선 좌표(px)를 사용합니다</p>
+        <p>권한 문제 발생 시 마우스 위치를 시선으로 간주하여 오버레이를 그립니다.</p>
+        <p style="height: 1200px"></p>
+      </div>
+      <canvas id="overlay"></canvas>
+    </div>
+
+    <aside id="side">
+      <div class="row">
+        <label for="userId" style="white-space:nowrap">User ID</label>
+        <input id="userId" type="text" />
+        <button id="connectBtn">Connect</button>
+      </div>
+
+      <div class="row">
+      </div>
+      <p style="margin:6px 0 4px">Connected Users</p>
+      <div id="users"></div>
+      <hr />
+      <hr />
+      <div class="row" style="margin-top:8px">
+        <button id="startMeasureBtn">Start Measure</button>
+        <button id="stopMeasureBtn" disabled>Stop</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Calibration layer -->
+  <div id="calibLayer"
+    style="position:absolute; inset:16px auto auto 16px; pointer-events:none; z-index:20; display:none;">
+    <canvas id="calibCanvas"></canvas>
+    <div id="calibHint"
+      style="position:absolute; top:8px; left:8px; background:rgba(0,0,0,.6); color:#fff; padding:6px 10px; border-radius:6px; font-size:14px;">
+      시선 보정 중... 표시된 점을 바라봐 주세요 (자동 진행)
+    </div>
+  </div>
+
+  <!-- Measurement completed modal -->
+  <div id="doneModal"
+    style="position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:50; background:rgba(0,0,0,.35);">
+    <div
+      style="background:#fff; width:min(520px, 92vw); padding:16px; border-radius:10px; box-shadow:0 10px 30px rgba(0,0,0,.2)">
+      <h3 style="margin:0 0 8px">측정이 완료되었습니다</h3>
+      <p style="margin:0 0 12px; color:#444">히트맵과 경로는 본문 위에 표시됩니다.</p>
+
+      <div id="quizContainer">
+        <p>기사 내용 퀴즈 (B1)</p>
+        <div class="quizOption">
+          <input type="radio" id="q1_a" name="quiz1" value="a">
+          <label for="q1_a">독일에서는 검은 고양이를 신성하게 여긴다.</label>
+        </div>
+        <div class="quizOption">
+          <input type="radio" id="q1_b" name="quiz1" value="b">
+          <label for="q1_b">영국에서는 검은 고양이가 행운을 가져다준다고 한다.</label>
+        </div>
+        <div class="quizOption">
+          <input type="radio" id="q1_c" name="quiz1" value="c">
+          <label for="q1_c">일본에서는 검은 고양이가 여성을 불행하게 만든다고 한다.</label>
+        </div>
+      </div>
+
+      <div id="sessionStats" style="margin:0 0 12px; color:#222">
+        <div>소요 시간: <span id="durText">-</span></div>
+        <div>시선 점수: <span id="gazeScoreText">-</span></div>
+        <div>퀴즈 점수: <span id="quizScoreText">-</span></div>
+        <div style="font-weight: 600; margin-top: 6px;">최종 점수: <span id="scoreText">-</span></div>
+      </div>
+
+      <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end">
+        <button id="modalClose">결과 전송 및 닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    // --- API Setup ---
+    // =============================================
+    // ========== [수정] API 주소 변경 ==========
+    // =============================================
+    let API = "https://lesen-fuer-studenten.onrender.com"; // HTTPS -> HTTP, 8443 -> 8000
+    let WSS = "wss://lesen-fuer-studenten.onrender.com"; // ws://
+    // =============================================
+    function setAPI(base) {
+      API = base;
+      WSS = base.replace("https", "wss").replace("http", "ws");
+      console.log("[api] using", API);
+    }
+
+    // --- DOM Elements ---
+    const wrap = document.getElementById('wrap');
+    const article = document.getElementById('article');
+    const canvas = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+    const hiddenFrameCanvas = document.getElementById('hiddenFrameCanvas');
+    const hiddenFrameCtx = hiddenFrameCanvas.getContext('2d');
+
+    const calibLayer = document.getElementById('calibLayer');
+    const calibCanvas = document.getElementById('calibCanvas');
+    const calibCtx = calibCanvas.getContext?.('2d') || null;
+    const calibHint = document.getElementById('calibHint');
+
+    const doneModal = document.getElementById('doneModal');
+    const modalClose = document.getElementById('modalClose');
+    const durText = document.getElementById('durText');
+    const scoreText = document.getElementById('scoreText');
+    const gazeScoreText = document.getElementById('gazeScoreText');
+    const quizScoreText = document.getElementById('quizScoreText');
+
+    const usersDiv = document.getElementById('users');
+    const userIdInput = document.getElementById('userId');
+    const connectBtn = document.getElementById('connectBtn');
+
+    // --- State Variables ---
+    let ws = null;
+    let useMouseFallback = false;
+    const MIN_DT = Math.round(1000 / 15); // 15Hz
+    let lastSent = 0;
+    let lastRecorded = 0;
+    let isMeasuring = false;
+    let measureStartAt = null;
+    let measureEndAt = null;
+
+    let showPath = true;
+    let showHeatmap = true;
+    let currentGaze = { x: 0, y: 0 };
+    let lastWebgazer = { x: 0, y: 0, t: 0 };
+    let lastServerGaze = { x: null, y: null, conf: 0, t: 0 };
+
+    let fusionMode = 'fused';
+    let wWebgazer = 0.6, wServer = 0.4;
+
+    let gazePath = []; // [{x,y,t}]
+    const heatmapRows = 60, heatmapCols = 100;
+    let gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+
+    let calibMatrix = null; // Affine correction matrix
+
+    // --- Core Functions ---
+
+    function setMeasureState(running) {
+      isMeasuring = running;
+      const startBtn = document.getElementById('startMeasureBtn');
+      const stopBtn = document.getElementById('stopMeasureBtn');
+      if (startBtn && stopBtn) {
+        startBtn.disabled = running;
+        stopBtn.disabled = !running;
+      }
+      if (running) {
+        measureStartAt = Date.now();
+        measureEndAt = null;
+        lastRecorded = 0;
+        // Reset buffers on start
+        gazePath = [];
+        gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+        // Hide overlays during measurement
+        showPath = false;
+        showHeatmap = false;
+        drawOverlay();
+        // Seed first sample
+        const [sx, sy] = applyClientCalib(currentGaze.x, currentGaze.y);
+        recordGazeData(sx, sy, measureStartAt);
+        // Reset quiz
+        document.querySelectorAll('input[name="quiz1"]').forEach(rb => rb.checked = false);
+      } else {
+        measureEndAt = Date.now();
+      }
+    }
+
+    userIdInput.value = localStorage.getItem("gaze_user_id") || `user_${Math.random().toString(36).slice(2, 7)}`;
+
+    function resizeCanvas() {
+      const rect = wrap.getBoundingClientRect();
+      const padding = 32;
+      const w = Math.max(0, Math.floor(rect.width - padding));
+      const h = Math.max(0, Math.ceil(article.scrollHeight));
+      canvas.width = w; canvas.height = h;
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      drawOverlay();
+
+      if (calibCanvas) {
+        calibCanvas.width = w; calibCanvas.height = h;
+        calibCanvas.style.width = w + 'px'; calibCanvas.style.height = h + 'px';
+        if (calibVisible) drawCalibFrame();
+      }
+    }
+    new ResizeObserver(resizeCanvas).observe(wrap);
+    window.addEventListener('load', resizeCanvas);
+    window.addEventListener('resize', resizeCanvas);
+
+    function drawOverlay() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Draw Heatmap
+      if (showHeatmap && canvas.width > 0 && canvas.height > 0) {
+        const cellWidth = canvas.width / heatmapCols;
+        const cellHeight = canvas.height / heatmapRows;
+        let maxVal = 0;
+        for (let r = 0; r < heatmapRows; r++) {
+          for (let c = 0; c < heatmapCols; c++) {
+            if (gazeHeatmap[r][c] > maxVal) maxVal = gazeHeatmap[r][c];
+          }
+        }
+        if (maxVal === 0) maxVal = 1; // Avoid division by zero
+        for (let r = 0; r < heatmapRows; r++) {
+          for (let c = 0; c < heatmapCols; c++) {
+            const val = gazeHeatmap[r][c];
+            if (val > 0) {
+              const alpha = Math.min(0.8, (val / maxVal) * 5);
+              ctx.fillStyle = `rgba(255, 0, 0, ${alpha})`;
+              ctx.fillRect(c * cellWidth, r * cellHeight, cellWidth, cellHeight);
+            }
+          }
+        }
+      }
+
+      // 2. Draw Path
+      if (showPath && gazePath.length >= 2) {
+        ctx.strokeStyle = "rgba(0, 128, 255, 0.7)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(gazePath[0].x, gazePath[0].y);
+        for (let i = 1; i < gazePath.length; i++) {
+          ctx.lineTo(gazePath[i].x, gazePath[i].y);
+        }
+        ctx.stroke();
+      }
+
+      // 3. Draw Current Gaze Point
+      if (showPath) {
+        ctx.fillStyle = '#2b8cff';
+        ctx.beginPath();
+        ctx.arc(currentGaze.x, currentGaze.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function recordGazeData(x, y, t) {
+      if (!isMeasuring) return;
+      // 1. Record for path
+      gazePath.push({ x, y, t });
+      // 2. Record for heatmap
+      const cellHeight = canvas.height / heatmapRows;
+      const cellWidth = canvas.width / heatmapCols;
+      if (cellHeight === 0 || cellWidth === 0) return;
+      const h_row = Math.floor(y / cellHeight);
+      const h_col = Math.floor(x / cellWidth);
+      if (h_row >= 0 && h_row < heatmapRows && h_col >= 0 && h_col < heatmapCols) {
+        gazeHeatmap[h_row][h_col]++;
+      }
+    }
+
+    function connect() {
+      const uid = userIdInput.value.trim();
+      if (!uid) return alert("User ID를 입력하세요.");
+      localStorage.setItem("gaze_user_id", uid);
+
+      try { ws && ws.close(); } catch (e) { }
+
+      ws = new WebSocket(`${WSS}/ws?user_id=${encodeURIComponent(uid)}`);
+      // We are sending binary video frames
+      ws.binaryType = "blob";
+
+      ws.onopen = async () => {
+        console.log("ws open");
+        // Get current user list
+        try {
+          const r = await fetch(`${API}/users`, { cache: "no-store" });
+          if (r.ok) {
+            const js = await r.json();
+            usersDiv.innerHTML = (js.users || []).map(u => `<div>${u}</div>`).join('');
+          }
+        } catch { }
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          // All our messages from server are JSON
+          const msg = JSON.parse(ev.data);
+          if (msg.type === 'users') {
+            usersDiv.innerHTML = msg.users.map(u => `<div>${u}</div>`).join('');
+          }
+          // YOLO 좌표 처리 로직
+          else if (msg.type === 'server_gaze') {
+            // msg.x, msg.y는 *비디오 프레임* 기준 좌표 (예: 0-640)
+
+            // 1. WebGazer의 유틸리티를 사용해 "비디오 좌표"를 "화면 좌표(viewport)"로 변환
+            const screenCoords = window.webgazer.util.videoPxToScreenPx(msg.x, msg.y);
+            if (!screenCoords) return; // 변환 실패 시 (예: 모델 로드 중)
+
+            const [screenX, screenY] = screenCoords;
+
+            // 2. toContainer를 사용해 "화면 좌표"를 "캔버스 좌표"로 변환
+            const [containerX, containerY] = toContainer(screenX, screenY);
+
+            // 3. 융합을 위해 'lastServerGaze' 변수를 갱신
+            lastServerGaze = {
+              x: containerX,
+              y: containerY,
+              conf: msg.conf,
+              t: msg.t
+            };
+          }
+          else if (msg.type === 'server_features') {
+            // Fallback for OpenCV test (if server sends this)
+            // console.log(`[Server]: faces=${msg.face_count}, eyes=${msg.eye_count}`);
+          }
+        } catch (e) {
+          console.warn("WS message error", e, ev.data);
+        }
+      };
+      ws.onclose = () => console.log("ws closed");
+      ws.onerror = (e) => console.warn("ws error", e);
+    }
+
+    // --- Gaze Prediction & Fusion ---
+
+    function toContainer(xw, yw) {
+      // xw, yw = gaze coordinates relative to the viewport
+      const rect = wrap.getBoundingClientRect();
+      const x = xw - rect.left;
+      // [FIX] Removed "+ window.scrollY" which was double-counting the scroll.
+      const y = yw - rect.top;
+      return [x, y];
+    }
+    let sx = null, sy = null;
+    const ALPHA = 0.35; // Smoothing factor
+    function ema(x, y) { if (sx === null || sy === null) { sx = x; sy = y; return [x, y]; } sx = ALPHA * x + (1 - ALPHA) * sx; sy = ALPHA * y + (1 - ALPHA) * sy; return [sx, sy]; }
+
+    function fuseGaze(gx, gy) {
+      // gx, gy = WebGazer prediction
+      let fx = gx, fy = gy;
+      if (fusionMode === 'webgazer') return [gx, gy];
+      if (fusionMode === 'server') {
+        if (lastServerGaze.x != null && lastServerGaze.y != null) return [lastServerGaze.x, lastServerGaze.y];
+        return [gx, gy]; // Fallback to webgazer if server not ready
+      }
+
+      // 'fused' mode:
+      if (lastServerGaze.x == null || lastServerGaze.y == null) {
+        return [gx, gy]; // Use webgazer if server not ready
+      }
+
+      // Blend WebGazer (fast) and Server (accurate) predictions
+      const conf = Math.max(0, Math.min(1, lastServerGaze.conf || 0));
+      const ws = wServer * conf; // Server weight
+      const wg = wWebgazer;       // Webgazer weight
+
+      fx = (wg * gx + ws * lastServerGaze.x) / (wg + ws);
+      fy = (wg * gy + ws * lastServerGaze.y) / (wg + ws);
+
+      return [fx, fy];
+    }
+
+    function enableMouseFallback() {
+      if (useMouseFallback) return;
+      useMouseFallback = true;
+      console.warn('[gaze] fallback → mouse');
+      window.addEventListener('mousemove', (e) => {
+        const rect = wrap.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top + window.scrollY;
+        const now = Date.now();
+        const [ex, ey] = ema(x, y);
+
+        lastWebgazer = { x: ex, y: ey, t: now }; // Mouse acts as WebGazer
+        const [fx, fy] = fuseGaze(ex, ey);
+        currentGaze = { x: fx, y: fy };
+        drawOverlay();
+
+        if (now - lastRecorded >= MIN_DT) {
+          lastRecorded = now;
+          const [fx2, fy2] = applyClientCalib(fx, fy);
+          recordGazeData(fx2, fy2, now);
+        }
+      }, { passive: true });
+    }
+
+    async function startGaze() {
+      if (!('mediaDevices' in navigator) || !('getUserMedia' in navigator.mediaDevices)) {
+        return enableMouseFallback();
+      }
+      try {
+        window.webgazer
+          .setRegression('ridge')
+          .showVideoPreview(false)
+          .showPredictionPoints(false)
+          .showFaceOverlay(false) // Set to true for debugging face tracking
+          .showFaceFeedbackBox(false);
+        await window.webgazer.begin();
+
+        // This loop provides the local 'currentGaze' for calibration
+        const loop = async () => {
+          try {
+            const pred = await window.webgazer.getCurrentPrediction();
+            const now = Date.now();
+            if (pred && typeof pred.x === 'number' && typeof pred.y === 'number') {
+              const [cx, cy] = toContainer(pred.x, pred.y);
+              const [ex, ey] = ema(cx, cy);
+
+              lastWebgazer = { x: ex, y: ey, t: now };
+              const [fx, fy] = fuseGaze(ex, ey); // Fuse WebGazer + Server Gaze
+              currentGaze = { x: fx, y: fy }; // Update global gaze
+              drawOverlay();
+
+              // Record data if measuring
+              if ((now - lastRecorded) >= MIN_DT) {
+                lastRecorded = now;
+                const [fx2, fy2] = applyClientCalib(fx, fy); // Apply affine correction
+                recordGazeData(fx2, fy2, now);
+              }
+            }
+          } catch (e) { console.warn('[gaze] loop error', e); }
+          requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop); // Start local prediction loop
+
+        // This loop sends video frames to the server
+        startFrameLoop();
+
+      } catch (err) {
+        console.warn('[gaze] begin failed', err);
+        enableMouseFallback(); // Fallback to mouse if camera fails
+      }
+    }
+
+    // This loop sends video frames to the server
+    let frameLoopInterval = null;
+    function startFrameLoop() {
+      if (frameLoopInterval) clearInterval(frameLoopInterval);
+      const FRAME_INTERVAL_MS = 66; // ~15Hz
+
+      frameLoopInterval = setInterval(() => {
+        if (!ws || ws.readyState !== 1) return; // Stop if ws not connected
+
+        const videoEl = document.getElementById('webgazerVideoFeed');
+        if (!videoEl || videoEl.paused || videoEl.ended || videoEl.videoWidth === 0) {
+          return; // Video not ready
+        }
+
+        try {
+          // Draw video to hidden canvas
+          hiddenFrameCanvas.width = videoEl.videoWidth;
+          hiddenFrameCanvas.height = videoEl.videoHeight;
+          hiddenFrameCtx.drawImage(videoEl, 0, 0, videoEl.videoWidth, videoEl.videoHeight);
+
+          // Convert canvas to binary Blob (JPEG, 50% quality)
+          hiddenFrameCanvas.toBlob(blob => {
+            if (blob && ws && ws.readyState === 1) {
+              // Send binary data to server
+              ws.send(blob);
+            }
+          }, 'image/jpeg', 0.5);
+
+        } catch (e) {
+          console.error("Frame capture/send error", e);
+        }
+      }, FRAME_INTERVAL_MS);
+    }
+
+    // Connect Button: Connects WS, starts gaze, runs 3-stage calibration
+    connectBtn.onclick = async () => {
+      // 1. [신규] 이전 사용자 데이터(시각화) 즉시 삭제
+      gazePath = [];
+      gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+      showPath = true; // 캘리브레이션 중 시선 점을 보여주기 위함
+      showHeatmap = false; // 이전 사용자 히트맵 숨김
+      drawOverlay(); // 캔버스 지우기
+
+      // 2. 웹소켓 연결
+      connect();
+
+      // 3. 시선 추적 시작 (로컬+서버)
+      await startGaze();
+
+      // 4. 0단계 (클릭) 훈련
+      await runWebgazerTraining();
+
+      // 5. 1-2단계 (응시) 보정
+      await runAffineCorrection();
+    };
+
+    // =============================================
+    // ========== [수정] Article Loader (단순화) ==========
+    // =============================================
+    async function loadArticle(v = "b1") {
+      try {
+        // [수정] 8000 포트로만 요청 (Fallback 로직 삭제)
+        const res = await fetch(`${API}/article?v=${encodeURIComponent(v)}`, { cache: "no-store" });
+
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+
+        const html = await res.text();
+        document.getElementById('article').innerHTML = html;
+
+        if (typeof resizeCanvas === 'function') resizeCanvas();
+
+        // Reset buffers
+        gazePath = [];
+        gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+        drawOverlay();
+
+      } catch (e) {
+        console.error('[loadArticle] Failed to fetch article:', e);
+        article.innerHTML = `<h1 style="color:red">Error</h1><p>Failed to load article. Is the backend server running at ${API}?</p>`;
+      }
+    }
+    loadArticle("b1"); // Initial load
+    // =============================================
+    // ========== 수정된 부분 끝 ==========
+    // =============================================
+
+    // --- Affine Correction (Calibration) ---
+
+    // Apply the 2x3 correction matrix
+    function applyClientCalib(x, y) {
+      if (!calibMatrix) return [x, y];
+      const [[a, b, c], [d, e, f]] = calibMatrix;
+      const X = a * x + b * y + c;
+      const Y = d * x + e * y + f;
+      return [X, Y];
+    }
+
+    let calibVisible = false;
+    // Stage 0 & 1 points
+    const gridPointsNorm = [
+      [0.1, 0.1], [0.5, 0.1], [0.9, 0.1],
+      [0.1, 0.5], [0.5, 0.5], [0.9, 0.5],
+      [0.1, 0.9], [0.5, 0.9], [0.9, 0.9],
+    ];
+    // Stage 2 points
+    const linearPointsNorm = [
+      [0.3, 0.5], [0.7, 0.5], // Horizontal
+      [0.5, 0.3], [0.5, 0.7], // Vertical
+      [0.3, 0.3], [0.7, 0.7], [0.3, 0.7] // Diagonal
+    ];
+    let calibStep = 0;
+    let calibPhase = 1;
+    let calibSamples = [];
+    let currentPointSet = gridPointsNorm;
+
+    function drawCalibFrame() {
+      if (!calibCtx) return;
+      calibCtx.clearRect(0, 0, calibCanvas.width, calibCanvas.height);
+      // Draw all faint points
+      calibCtx.fillStyle = 'rgba(0,0,0,.08)';
+      for (const [nx, ny] of currentPointSet) {
+        const x = nx * calibCanvas.width;
+        const y = ny * calibCanvas.height;
+        calibCtx.beginPath();
+        calibCtx.arc(x, y, 6, 0, Math.PI * 2);
+        calibCtx.fill();
+      }
+      // Draw current active point
+      if (calibStep < currentPointSet.length) {
+        const [nx, ny] = currentPointSet[calibStep];
+        const x = nx * calibCanvas.width;
+        const y = ny * calibCanvas.height;
+        calibCtx.fillStyle = '#2b8cff';
+        calibCtx.beginPath();
+        calibCtx.arc(x, y, 10, 0, Math.PI * 2);
+        calibCtx.fill();
+      }
+    }
+
+    function showCalibLayer(show) {
+      calibVisible = show;
+      // Enable/disable clicks based on stage
+      calibLayer.style.pointerEvents = show ? 'auto' : 'none';
+      calibLayer.style.display = show ? 'block' : 'none';
+      if (show) drawCalibFrame();
+    }
+
+    // Solves the affine matrix
+    function solveAffine(samples) {
+      const A = [];
+      const bvec = [];
+      for (const s of samples) {
+        const x = s.raw[0], y = s.raw[1];
+        const X = s.target[0], Y = s.target[1];
+        A.push([x, y, 1, 0, 0, 0]);
+        bvec.push(X);
+        A.push([0, 0, 0, x, y, 1]);
+        bvec.push(Y);
+      }
+      // Solve via Normal Equations
+      const AT = (M) => {
+        const rows = M.length, cols = M[0].length;
+        const out = Array.from({ length: cols }, () => Array(rows).fill(0));
+        for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) out[j][i] = M[i][j];
+        return out;
+      };
+      const matMul = (M, N) => {
+        const r = M.length, c = N[0].length, k = N.length;
+        const out = Array.from({ length: r }, () => Array(c).fill(0));
+        for (let i = 0; i < r; i++) for (let j = 0; j < c; j++) {
+          let s = 0; for (let t = 0; t < k; t++) s += M[i][t] * N[t][j];
+          out[i][j] = s;
+        }
+        return out;
+      };
+      const ATm = AT(A);
+      const ATA = matMul(ATm, A);
+      const ATb = matMul(ATm, bvec.map(v => [v]));
+      const n = 6;
+      const M = Array.from({ length: n }, (_, i) => [...ATA[i], ATb[i][0]]);
+      // Gaussian elimination
+      for (let col = 0; col < n; col++) {
+        let piv = col;
+        for (let r = col + 1; r < n; r++) if (Math.abs(M[r][col]) > Math.abs(M[piv][col])) piv = r;
+        if (Math.abs(M[piv][col]) < 1e-8) return null;
+        if (piv !== col) { const tmp = M[col]; M[col] = M[piv]; M[piv] = tmp; }
+        const div = M[col][col];
+        for (let c = col; c <= n; c++) M[col][c] /= div;
+        for (let r = 0; r < n; r++) {
+          if (r === col) continue;
+          const f = M[r][col];
+          for (let c = col; c <= n; c++) M[r][c] -= f * M[col][c];
+        }
+      }
+      const theta = M.map(row => row[n]);
+      return [[theta[0], theta[1], theta[2]], [theta[3], theta[4], theta[5]]];
+    }
+
+    // Stage 0: WebGazer Internal Training (Click-based)
+    async function runWebgazerTraining() {
+      const CLICKS_PER_DOT = 5;
+      calibPhase = 0;
+      calibStep = 0;
+      currentPointSet = gridPointsNorm;
+      let clickCount = 0;
+
+      showCalibLayer(true);
+      calibHint.textContent = `0단계: 시선 모델 훈련 (${calibStep + 1}/9). 점을 바라보며 5번 클릭하세요. (0/5)`;
+
+      return new Promise(resolve => {
+        const calibClickListener = (e) => {
+          clickCount++;
+          // Visual feedback on click
+          if (calibCtx) {
+            const [nx, ny] = currentPointSet[calibStep];
+            const targetX = nx * canvas.width;
+            const targetY = ny * canvas.height;
+            calibCtx.fillStyle = '#00b470'; // Green flash
+            calibCtx.beginPath();
+            calibCtx.arc(targetX, targetY, 12, 0, Math.PI * 2);
+            calibCtx.fill();
+            setTimeout(drawCalibFrame, 100); // Back to blue
+          }
+
+          if (clickCount >= CLICKS_PER_DOT) {
+            // Next point
+            calibStep++;
+            clickCount = 0;
+            if (calibStep >= currentPointSet.length) {
+              // Stage 0 complete
+              calibLayer.removeEventListener('click', calibClickListener);
+              showCalibLayer(false);
+              resolve();
+              return;
+            }
+          }
+          // Update hint
+          calibHint.textContent = `0단계: 시선 모델 훈련 (${calibStep + 1}/9). 점을 바라보며 5번 클릭하세요. (${clickCount}/${CLICKS_PER_DOT})`;
+        };
+        // Add click listener to calibration layer
+        calibLayer.addEventListener('click', calibClickListener);
+      });
+    }
+
+    // Helper for Stage 1-2: Gaze-on-Target (Dwell-time)
+    async function collectGazeOnTarget(targetX, targetY) {
+      const CALIB_DIST_THRESHOLD_PX = 50;
+      const CALIB_DWELL_FRAMES = 15;
+      let stableFrames = 0;
+      let gazeSamplesForPoint = [];
+
+      while (stableFrames < CALIB_DWELL_FRAMES) {
+        await new Promise(res => requestAnimationFrame(res));
+        // Use the fused gaze, which is (currently) just the WebGazer gaze
+        const rawX = currentGaze.x;
+        const rawY = currentGaze.y;
+        const dist = Math.hypot(rawX - targetX, rawY - targetY);
+
+        if (dist < CALIB_DIST_THRESHOLD_PX) {
+          // Gaze is on target
+          stableFrames++;
+          gazeSamplesForPoint.push([rawX, rawY]);
+          if (calibCtx) {
+            calibCtx.fillStyle = '#00b470'; // Green feedback
+            calibCtx.beginPath();
+            calibCtx.arc(targetX, targetY, 12, 0, Math.PI * 2);
+            calibCtx.fill();
+          }
+        } else {
+          // Gaze moved off target
+          stableFrames = 0;
+          gazeSamplesForPoint = [];
+          if (calibCtx) {
+            calibCtx.fillStyle = '#2b8cff'; // Blue feedback
+            calibCtx.beginPath();
+            calibCtx.arc(targetX, targetY, 10, 0, Math.PI * 2);
+            calibCtx.fill();
+          }
+        }
+      }
+
+      // Dwell complete, average the samples
+      let sumX = 0, sumY = 0;
+      for (const [x, y] of gazeSamplesForPoint) {
+        sumX += x; sumY += y;
+      }
+      const avgX = sumX / gazeSamplesForPoint.length;
+      const avgY = sumY / gazeSamplesForPoint.length;
+      return { raw: [avgX, avgY], target: [targetX, targetY] };
+    }
+
+    // Stage 1-2: Affine Correction (Gaze-based)
+    async function runAffineCorrection() {
+      const wasMeasuring = isMeasuring;
+      if (wasMeasuring) setMeasureState(false);
+      calibSamples = []; // Reset sample array
+      showCalibLayer(true);
+      calibLayer.style.pointerEvents = 'none'; // Disable click for gaze stage
+
+      // --- Stage 1: 9-point grid ---
+      calibPhase = 1;
+      calibStep = 0;
+      currentPointSet = gridPointsNorm;
+      calibHint.textContent = '1/2단계: 2차 보정 (점을 바라보세요)';
+      while (calibStep < currentPointSet.length) {
+        drawCalibFrame();
+        const [nx, ny] = currentPointSet[calibStep];
+        const targetX = nx * canvas.width;
+        const targetY = ny * canvas.height;
+        const sample = await collectGazeOnTarget(targetX, targetY);
+        calibSamples.push(sample);
+        calibStep++;
+      }
+
+      // --- Stage 2: 7-point refinement ---
+      calibPhase = 2;
+      calibStep = 0;
+      currentPointSet = linearPointsNorm;
+      calibHint.textContent = '2/2단계: 보강 (점을 바라보세요)';
+      while (calibStep < currentPointSet.length) {
+        drawCalibFrame();
+        const [nx, ny] = currentPointSet[calibStep];
+        const targetX = nx * canvas.width;
+        const targetY = ny * canvas.height;
+        const sample = await collectGazeOnTarget(targetX, targetY);
+        calibSamples.push(sample);
+        calibStep++;
+      }
+
+      // --- Final Calculation ---
+      showCalibLayer(false);
+      calibHint.textContent = '시선 보정 중...';
+      if (calibSamples.length >= 6) { // We have 16
+        const mat = solveAffine(calibSamples);
+        if (mat) {
+          calibMatrix = mat; // Set the global correction matrix
+          console.log('[calib] 2-Phase (16 points) matrix', calibMatrix);
+          alert('시선 보정이 완료되었습니다.');
+        } else {
+          calibMatrix = null;
+          alert('보정 행렬 계산에 실패했습니다.');
+        }
+      } else {
+        alert('보정 샘플이 충분하지 않습니다.');
+      }
+      if (wasMeasuring) setMeasureState(true);
+    }
+
+    // --- Measurement Controls & Scoring ---
+
+    // [수정] startMeasureBtn 핸들러 복구
+    document.getElementById('startMeasureBtn').onclick = () => {
+      setMeasureState(true);
+    };
+
+    // '중지' 버튼: 시선 점수만 계산하고 모달을 엽니다.
+    document.getElementById('stopMeasureBtn').onclick = () => {
+      if (!isMeasuring) return;
+      setMeasureState(false); // Stop measuring
+
+      const durationMs = Math.max(0, (measureStartAt ? (measureEndAt - measureStartAt) : 0));
+      // Ensure at least one sample
+      if (gazePath.length === 0 && Number.isFinite(currentGaze.x) && Number.isFinite(currentGaze.y)) {
+        gazePath.push({ x: currentGaze.x, y: currentGaze.y, t: measureEndAt });
+      }
+
+      // Format duration
+      const mm = Math.floor(durationMs / 60000);
+      const ss = Math.floor((durationMs % 60000) / 1000);
+      durText.textContent = `${mm}:${String(ss).padStart(2, '0')} (${durationMs}ms)`;
+
+      // Gaze score만 먼저 계산해서 표시
+      const gazeScore = Math.round(Math.max(0, Math.min(100, computeGazeCoverageScore())));
+      gazeScoreText.textContent = `${gazeScore} 점`;
+      quizScoreText.textContent = `-`;
+      scoreText.textContent = `-`;
+
+      // 버튼을 '전송' 기능으로 초기화
+      modalClose.textContent = "최종 점수 확인 및 전송";
+      modalClose.onclick = handleSubmitAndShowScores; // '전송' 함수 할당
+
+      // Show overlays and modal
+      showPath = true; showHeatmap = true;
+      drawOverlay();
+      doneModal.style.display = 'flex';
+    };
+
+    // '결과 전송' 버튼이 처음 클릭될 때 실행되는 함수
+    function handleSubmitAndShowScores() {
+      // 1. Calculate Quiz Score
+      const quizAnswer = document.querySelector('input[name="quiz1"]:checked')?.value;
+      const quizScore = (quizAnswer === 'b') ? 100 : 0; // 'b' is correct
+
+      // 2. Calculate Gaze Score (again)
+      const gazeScore = Math.round(Math.max(0, Math.min(100, computeGazeCoverageScore())));
+
+      // 3. Combine Scores (60% gaze, 40% quiz)
+      const combinedScore = Math.round(gazeScore * 0.6 + quizScore * 0.4);
+
+      // 4. Display scores in modal
+      gazeScoreText.textContent = `${gazeScore} 점`;
+      quizScoreText.textContent = `${quizScore} 점`;
+      scoreText.textContent = `${combinedScore} 점`; // 최종 점수 표시
+
+      // 5. Send scores to server
+      try {
+        if (ws && ws.readyState === 1) {
+          ws.send(JSON.stringify({
+            type: 'score',
+            t: measureEndAt || Date.now(),
+            score: combinedScore,
+            gaze_score: gazeScore,  // For storage
+            quiz_score: quizScore   // For storage
+          }));
+        }
+      } catch (e) {
+        console.error("Score send failed", e);
+      }
+
+      // 6. [핵심] 버튼을 '닫기' 기능으로 변경
+      modalClose.textContent = "닫기";
+      modalClose.onclick = () => {
+        doneModal.style.display = 'none';
+      };
+    }
+
+    // '닫기' 버튼의 기본 동작을 위 함수로 설정
+    modalClose.onclick = handleSubmitAndShowScores;
+
+    // --- Scoring Function ---
+    function computeGazeCoverageScore() {
+      const totalCells = heatmapRows * heatmapCols;
+      if (totalCells === 0) return 0;
+      let activatedCells = 0;
+      for (let r = 0; r < heatmapRows; r++) {
+        for (let c = 0; c < heatmapCols; c++) {
+          if (gazeHeatmap[r][c] > 0) {
+            activatedCells++;
+          }
+        }
+      }
+      const coverageRatio = activatedCells / totalCells;
+
+      // Normalize: 30% coverage = 100 points
+      const TARGET_COVERAGE = 0.3;
+      const normalizedScore = (coverageRatio / TARGET_COVERAGE) * 100;
+      return Math.min(100, normalizedScore); // Cap at 100
+    }
+  </script>
+</body>
+
+</html>
