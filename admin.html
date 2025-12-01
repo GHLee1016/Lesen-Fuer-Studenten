@@ -327,14 +327,15 @@
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data);
+          console.log("[Admin] Received WS message:", msg.type, msg.data); // [디버그] 수신 데이터 로그
 
           if (msg.type === "groups") {
             allGroupsData = msg.data;
             render(allGroupsData);
-            console.log("Received new group data via WebSocket.");
+            console.log("[Admin] Rendered groups:", allGroupsData); // [디버그] 렌더링 확인
           }
-        } catch (e) {
-          console.warn("WS message parse error", e);
+        } catch (err) {
+          console.error("WS msg parse error", err);
         }
       };
 
