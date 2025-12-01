@@ -156,6 +156,15 @@
         <p style="height: 1200px"></p>
       </div>
       <canvas id="overlay"></canvas>
+
+      <!-- Calibration layer (Moved inside wrap) -->
+      <div id="calibLayer" style="position:absolute; inset:0; pointer-events:none; z-index:20; display:none;">
+        <canvas id="calibCanvas"></canvas>
+        <div id="calibHint"
+          style="position:absolute; top:8px; left:8px; background:rgba(0,0,0,.6); color:#fff; padding:6px 10px; border-radius:6px; font-size:14px;">
+          시선 보정 중... 표시된 점을 바라봐 주세요 (자동 진행)
+        </div>
+      </div>
     </div>
 
     <aside id="side">
@@ -179,14 +188,7 @@
   </div>
 
   <!-- Calibration layer -->
-  <div id="calibLayer"
-    style="position:absolute; inset:16px auto auto 16px; pointer-events:none; z-index:20; display:none;">
-    <canvas id="calibCanvas"></canvas>
-    <div id="calibHint"
-      style="position:absolute; top:8px; left:8px; background:rgba(0,0,0,.6); color:#fff; padding:6px 10px; border-radius:6px; font-size:14px;">
-      시선 보정 중... 표시된 점을 바라봐 주세요 (자동 진행)
-    </div>
-  </div>
+
 
   <!-- Measurement completed modal -->
   <div id="doneModal"
