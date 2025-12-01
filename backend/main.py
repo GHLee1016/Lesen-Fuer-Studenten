@@ -243,6 +243,10 @@ async def ws_endpoint(ws: WebSocket):
             else:
                 continue
 
+            if typ == "ping":
+                # [신규] Keep-Alive 신호 수신
+                continue
+
             if typ == "gaze":
                 t = int(data["t"]); x = float(data["x"]); y = float(data["y"])
                 SESSIONS[user_id]["points"].append((t, x, y))
