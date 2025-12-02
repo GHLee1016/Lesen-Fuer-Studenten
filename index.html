@@ -175,6 +175,7 @@
       </div>
 
       <div class="row">
+        <button id="clearBtn" disabled>데이터 삭제</button>
       </div>
       <p style="margin:6px 0 4px">Connected Users</p>
       <div id="users"></div>
@@ -263,9 +264,11 @@
     const usersDiv = document.getElementById('users');
     const userIdInput = document.getElementById('userId');
     const connectBtn = document.getElementById('connectBtn');
+    const clearBtn = document.getElementById('clearBtn');
 
     // --- State Variables ---
     let ws = null;
+    let hasData = false; // [신규] 데이터 존재 여부 플래그
     let useMouseFallback = false;
     const MIN_DT = Math.round(1000 / 15); // 15Hz
     let lastSent = 0;
@@ -313,6 +316,11 @@
         // Seed first sample
         const [sx, sy] = applyClientCalib(currentGaze.x, currentGaze.y);
         recordGazeData(sx, sy, measureStartAt);
+
+        // [신규] 데이터가 생성되었음을 표시
+        hasData = true;
+        if (clearBtn) clearBtn.disabled = false;
+
         // Reset quiz
         document.querySelectorAll('input[name="quiz1"]').forEach(rb => rb.checked = false);
       } else {
@@ -641,6 +649,13 @@
       showHeatmap = false; // 이전 사용자 히트맵 숨김
       drawOverlay(); // 캔버스 지우기
 
+      // 데이터 상태 초기화
+      hasData = false;
+      if (clearBtn) clearBtn.disabled = true;
+
+      // 2. 웹소켓 연결
+      connect();
+
       // 2. 웹소켓 연결
       connect();
 
@@ -653,6 +668,29 @@
       // 5. 1-2단계 (응시) 보정
       await runAffineCorrection();
     };
+
+    // [신규] 데이터 삭제 버튼 핸들러
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        if (!confirm("정말 데이터를 삭제하시겠습니까?")) return;
+
+        // 데이터 초기화
+        gazePath = [];
+        gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+        hasData = false;
+        clearBtn.disabled = true;
+
+        // 화면 초기화
+        showPath = false;
+        showHeatmap = false;
+        drawOverlay();
+
+        // 입력 필드 등 초기화 필요 시 추가
+        // userIdInput.value = ...; 
+
+        alert("데이터가 삭제되었습니다. 새 사용자로 접속할 수 있습니다.");
+      };
+    }
 
     // =============================================
     // ========== [수정] Article Loader (단순화) ==========
@@ -674,6 +712,8 @@
         // Reset buffers
         gazePath = [];
         gazeHeatmap = Array.from({ length: heatmapRows }, () => Array(heatmapCols).fill(0));
+        hasData = false; // [신규] 기사 로드 시 데이터 초기화
+        if (clearBtn) clearBtn.disabled = true;
         drawOverlay();
 
       } catch (e) {
