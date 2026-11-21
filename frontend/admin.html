@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>교사용 대시보드 · Lesen für Studenten</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#062f3d" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Literata:opsz,wght@7..72,300;7..72,400;7..72,500&family=Noto+Serif+KR:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/admin.css" />
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    </defs>
+  </svg>
+
+  <!-- Login -->
+  <section class="login" id="loginView">
+    <div class="login-side dark">
+      <a class="brand" href="/"><b>Lesen</b><small>für Studenten</small></a>
+      <div>
+        <h1>학생들의 읽기를<br />한 화면에서.</h1>
+        <p>읽기 수준 분포, 학생별 문단 체류 시간, 데이터 품질 경고를 실시간으로 확인해요.</p>
+      </div>
+    </div>
+    <form class="login-form" id="loginForm">
+      <span class="eyebrow">Teacher login</span>
+      <h2>교사용 대시보드</h2>
+      <div class="field">
+        <label for="token">관리자 토큰</label>
+        <input class="input" id="token" type="password" autocomplete="current-password" required />
+        <span class="hint">서버의 ADMIN_TOKEN 환경변수 값이에요.</span>
+      </div>
+      <span class="error-text" id="loginError" hidden></span>
+      <button class="btn btn-primary btn-lg" id="loginBtn" type="submit">로그인</button>
+      <a class="back" href="/">← 학생 화면으로</a>
+    </form>
+  </section>
+
+  <!-- Dashboard -->
+  <div id="dashView" hidden>
+    <header class="topbar">
+      <a class="brand" href="/"><b>Lesen</b><small>교사용</small></a>
+      <div class="spacer"></div>
+      <span class="chip" id="liveChip"><span class="dot"></span>연결 중</span>
+      <button class="btn btn-sm btn-soft" id="exportCsv" type="button"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-download"/></svg>CSV</button>
+      <button class="btn btn-sm btn-soft" id="exportJson" type="button"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-download"/></svg>JSON</button>
+      <button class="btn btn-sm btn-ghost" id="logout" type="button">로그아웃</button>
+    </header>
+
+    <section class="dash-top dark">
+      <div class="wrap">
+        <span class="eyebrow">Class overview</span>
+        <h1>반 전체 읽기 현황</h1>
+        <dl class="kpis" id="kpis"></dl>
+      </div>
+    </section>
+
+    <main class="wrap dash">
+      <section class="dist">
+        <div class="dist-head">
+          <div>
+            <h2>읽기 수준 분포</h2>
+            <p class="muted">학생마다 가장 최근 세션의 최종 점수로 나눠요.</p>
+          </div>
+          <form class="levels" id="levelsForm">
+            <label>기대 수준 이상 ≥ <input class="input num" id="hi" type="number" min="0" max="100" step="1" /></label>
+            <label>지원 필요 &lt; <input class="input num" id="lo" type="number" min="0" max="100" step="1" /></label>
+            <button class="btn btn-sm" type="submit">기준 적용</button>
+          </form>
+        </div>
+        <div class="stack big" id="distBar"></div>
+        <div class="legend-row" id="distLegend"></div>
+      </section>
+
+      <section class="students">
+        <div class="table-head">
+          <h2>학생</h2>
+          <div class="filters" id="filters" role="tablist"></div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>학생</th><th>읽기 수준</th><th class="r">최종</th><th class="r">시선</th><th class="r">퀴즈</th><th class="r">속도</th><th class="r">세션</th><th>최근</th></tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <div class="scrim" id="scrim" hidden></div>
+    <aside class="drawer" id="drawer" hidden aria-label="학생 상세"></aside>
+  </div>
+
+  <script type="module" src="/static/js/admin.js"></script>
+</body>
+</html>

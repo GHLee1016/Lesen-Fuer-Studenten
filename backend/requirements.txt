@@ -1,15 +1,2 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-fastapi[all]
-uvicorn[standard]
-pillow
-numpy
-pandas
-sqlalchemy
-aioredis
-websockets
-python-multipart
-opencv-python-headless
-ultralytics
-torch
-torchvision
-torchmetrics
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30,<1
