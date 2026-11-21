@@ -129,6 +129,33 @@ def gloss_claude(word: str, sentence: str, lang: str) -> dict | None:
     return {**g.model_dump(), "source": "claude"}
 
 
+SCRIPT_RE = {
+    "ko": re.compile(r"[\uac00-\ud7a3]"), "ja": re.compile(r"[\u3040-\u30ff\u4e00-\u9fff]"),
+    "zh": re.compile(r"[\u4e00-\u9fff]"), "ru": re.compile(r"[\u0400-\u04ff]"),
+    "uk": re.compile(r"[\u0400-\u04ff]"), "ar": re.compile(r"[\u0600-\u06ff]"),
+}
+
+
+def pick_mymemory(word: str, lang: str, data: dict) -> str | None:
+    """MyMemory mixes dictionary hits with junk from its translation memory
+    (e.g. 'MAN' for 'man', "''not used''"). Keep the first plausible one."""
+    candidates = [((data.get("responseData") or {}).get("translatedText") or "", (data.get("responseData") or {}).get("match") or 0)]
+    candidates += [(m.get("translation") or "", m.get("match") or 0) for m in data.get("matches") or []]
+    script = SCRIPT_RE.get(lang)
+    for text, match in candidates:
+        t = text.strip().strip("'\"„“”«» ").replace("\xa0", " ")
+        if not t or "not used" in t.lower() or "MYMEMORY" in t.upper():
+            continue
+        if t.lower() == word.lower() or (t.isupper() and len(t) > 1 and t.lower() == word.lower()):
+            continue
+        if script and not script.search(t):
+            continue
+        if len(t.split()) > 6 or float(match or 0) < 0.5:
+            continue
+        return t
+    return None
+
+
 def gloss_mymemory(word: str, lang: str) -> dict | None:
     url = "https://api.mymemory.translated.net/get?" + urllib.parse.urlencode({"q": word, "langpair": f"de|{lang}"})
     try:
@@ -137,10 +164,12 @@ def gloss_mymemory(word: str, lang: str) -> dict | None:
     except Exception as e:
         log.warning("MyMemory failed: %s", e)
         return None
-    text = (data.get("responseData") or {}).get("translatedText") or ""
-    if data.get("responseStatus") != 200 or not text or "MYMEMORY WARNING" in text.upper():
+    if data.get("responseStatus") != 200:
         return None
-    return {"lemma": word, "article": "", "pos": "", "translation": text.strip(), "note": "", "source": "mymemory"}
+    text = pick_mymemory(word, lang, data)
+    if not text:
+        return None
+    return {"lemma": word, "article": "", "pos": "", "translation": text, "note": "", "source": "mymemory"}
 
 
 def gloss(word: str, sentence: str, lang: str, cache_get, cache_put, providers=None) -> dict | None:
