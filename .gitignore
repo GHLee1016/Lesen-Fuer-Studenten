@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# Local data
+data/
+*.db
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Node (e2e tooling)
+node_modules/
