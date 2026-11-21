@@ -70,13 +70,13 @@ try {
   for (const [q, v] of Object.entries(answers)) await page.check(`input[name="${q}"][value="${v}"]`);
   await page.screenshot({ path: `${OUT}/3-quiz.png`, fullPage: true });
   await page.click("#submitQuiz");
-  await page.waitForSelector(".score-hero");
+  await page.waitForSelector(".report");
   await sleep(300);
   await page.screenshot({ path: `${OUT}/4-results.png`, fullPage: true });
   await page.check("#layerPath");
   await page.uncheck("#layerHeat");
   await page.screenshot({ path: `${OUT}/5-scanpath.png`, fullPage: true });
-  const summary = await page.$eval(".score-hero", (e) => e.innerText.replace(/\s+/g, " "));
+  const summary = await page.$eval(".report", (e) => e.innerText.replace(/\s+/g, " "));
   console.log("results:", summary);
 
   // Admin dashboard

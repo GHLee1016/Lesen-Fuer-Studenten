@@ -5,60 +5,77 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>교사용 대시보드 · Lesen für Studenten</title>
   <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#06160c" />
   <link rel="icon" href="/favicon.ico" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="/static/css/base.css" />
   <link rel="stylesheet" href="/static/css/admin.css" />
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+      <symbol id="i-award" viewBox="0 0 24 24"><circle cx="12" cy="8" r="6"/><path d="M15.5 13 17 22l-5-3-5 3 1.5-9"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 21h20L12 3z"/><path d="M12 10v5M12 18h.01"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    </defs>
+  </svg>
+
   <!-- Login -->
-  <section class="login" id="loginView">
+  <section class="login dark" id="loginView">
     <form class="card login-card" id="loginForm">
-      <div class="brand"><span class="brand-mark">L</span>Lesen für Studenten</div>
-      <h1>교사용 대시보드</h1>
+      <span class="tile solid"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-lock"/></svg></span>
+      <div>
+        <span class="eyebrow">Teacher dashboard</span>
+        <h1>교사용 대시보드</h1>
+        <p class="muted">학생들의 읽기 리포트를 한눈에 확인해요.</p>
+      </div>
       <div class="field">
         <label for="token">관리자 토큰</label>
         <input class="input" id="token" type="password" autocomplete="current-password" required />
         <span class="hint">서버의 ADMIN_TOKEN 환경변수 값이에요.</span>
       </div>
       <span class="error-text" id="loginError" hidden></span>
-      <button class="btn btn-primary btn-lg" id="loginBtn" type="submit">로그인</button>
+      <button class="btn btn-primary btn-pill" id="loginBtn" type="submit">로그인</button>
+      <a class="back" href="/">← 학생 화면으로</a>
     </form>
   </section>
 
   <!-- Dashboard -->
   <div id="dashView" hidden>
-    <header class="topbar">
-      <div class="brand"><span class="brand-mark">L</span>Lesen für Studenten <small>교사용</small></div>
-      <div class="spacer"></div>
-      <span class="chip" id="liveChip"><span class="dot"></span>연결 중</span>
-      <button class="btn btn-sm" id="exportCsv" type="button">CSV</button>
-      <button class="btn btn-sm" id="exportJson" type="button">JSON</button>
-      <button class="btn btn-sm btn-ghost" id="logout" type="button">로그아웃</button>
-    </header>
-
-    <main class="dash">
+    <div class="dash-top dark">
+      <header class="dash-bar">
+        <a class="brand" href="/"><span class="brand-mark"><svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-eye"/></svg></span>Lesen für Studenten <small>교사용</small></a>
+        <div class="spacer"></div>
+        <span class="chip" id="liveChip"><span class="dot"></span>연결 중</span>
+        <button class="btn btn-sm btn-glass" id="exportCsv" type="button"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-download"/></svg>CSV</button>
+        <button class="btn btn-sm btn-glass" id="exportJson" type="button"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-download"/></svg>JSON</button>
+        <button class="btn btn-sm btn-glass" id="logout" type="button">로그아웃</button>
+      </header>
       <div class="dash-head">
         <div>
-          <h1>학생 현황</h1>
-          <p class="muted">학생마다 가장 최근 세션의 최종 점수로 그룹을 나눠요. 새 결과가 제출되면 바로 반영돼요.</p>
+          <span class="eyebrow">Class overview</span>
+          <h1>읽기 결과를 <span class="hl">한눈에</span></h1>
+          <p>학생마다 가장 최근 세션의 최종 점수로 그룹을 나눠요. 새 결과가 제출되면 바로 반영돼요.</p>
         </div>
-        <form class="levels card" id="levelsForm">
+        <form class="levels" id="levelsForm">
           <label>상위 ≥ <input class="input num" id="hi" type="number" min="0" max="100" step="1" /></label>
           <label>하위 &lt; <input class="input num" id="lo" type="number" min="0" max="100" step="1" /></label>
-          <button class="btn btn-sm btn-primary" type="submit">적용</button>
+          <button class="btn btn-sm btn-primary" type="submit">기준 적용</button>
         </form>
       </div>
-
       <dl class="kpis" id="kpis"></dl>
+    </div>
 
+    <main class="dash">
       <div class="groups">
-        <section class="group" data-level="high"><header><h2>상위</h2><span class="chip good" data-count></span></header><div class="list"></div></section>
-        <section class="group" data-level="medium"><header><h2>중위</h2><span class="chip warn" data-count></span></header><div class="list"></div></section>
-        <section class="group" data-level="low"><header><h2>하위</h2><span class="chip bad" data-count></span></header><div class="list"></div></section>
+        <section class="group" data-level="high"><header><span class="lv-dot"></span><h2>상위 그룹</h2><span class="count" data-count></span></header><div class="list"></div></section>
+        <section class="group" data-level="medium"><header><span class="lv-dot"></span><h2>중위 그룹</h2><span class="count" data-count></span></header><div class="list"></div></section>
+        <section class="group" data-level="low"><header><span class="lv-dot"></span><h2>하위 그룹</h2><span class="count" data-count></span></header><div class="list"></div></section>
       </div>
     </main>
 

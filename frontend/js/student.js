@@ -1,6 +1,6 @@
 import { GazeTracker } from "./tracker.js";
 import { Calibration, qualityOf } from "./calibration.js";
-import { h, s, $, toast, fmtDuration } from "./dom.js";
+import { h, s, $, icon, toast, fmtDuration } from "./dom.js";
 import { sizeCanvas, drawHeatmap, drawScanpath } from "./overlay.js";
 
 const ARTICLE_ID = new URLSearchParams(location.search).get("article") || "schwarze-katze";
@@ -59,10 +59,7 @@ function setState(name) {
 // ---------------------------------------------------------- article ----
 
 function renderArticle(a) {
-  const blocks = [
-    h("span", { class: "chip level-tag" }, `Niveau ${a.level}`),
-    h("h1", { "data-aoi": "title" }, a.title),
-  ];
+  const blocks = [h("h1", { "data-aoi": "title" }, a.title)];
   if (a.lead) blocks.push(h("p", { class: "lead", "data-aoi": "lead" }, a.lead));
   a.paragraphs.forEach((p, i) => blocks.push(h("p", { "data-aoi": `p${i + 1}` }, p)));
   el.article.replaceChildren(...blocks);
@@ -76,6 +73,8 @@ async function loadArticle() {
     renderArticle(st.article);
     $("#articleTitle").textContent = st.article.title;
     $("#articleLevel").textContent = st.article.level;
+    $("#frameTitle").textContent = `${st.article.title} · Niveau ${st.article.level}`;
+    $("#frameMeta").textContent = `${st.article.words} Wörter`;
     const minutes = Math.max(1, Math.round(st.article.words / 120));
     $("#articleMeta").textContent = `${st.article.words}단어 · 약 ${minutes}분 · 퀴즈 ${st.article.quiz.length}문항`;
     el.startBtn.disabled = false;
@@ -163,8 +162,20 @@ function startReading() {
     st.samples.push([Math.round(t), round1(smp.x - r.left), round1(smp.y - r.top)]);
     moveDot(smp.x, smp.y);
   });
+  st.progress = 0;
+  updateProgress();
   timerId = setInterval(() => { el.timer.textContent = fmtDuration(performance.now() - st.t0); }, 500);
 }
+
+function updateProgress() {
+  if (document.body.dataset.state !== "read") return;
+  const r = el.article.getBoundingClientRect();
+  const p = Math.max(0, Math.min(1, (innerHeight * 0.6 - r.top) / r.height));
+  st.progress = Math.max(st.progress || 0, p);
+  $("#progressBar").style.width = `${Math.round(st.progress * 100)}%`;
+  $("#progressText").textContent = `${Math.round(st.progress * 100)}%`;
+}
+window.addEventListener("scroll", updateProgress, { passive: true });
 
 function round1(v) { return Math.round(v * 10) / 10; }
 
@@ -220,8 +231,8 @@ $("#doneReading").addEventListener("click", () => {
 function renderQuiz() {
   el.quizList.replaceChildren(
     ...st.article.quiz.map((q, qi) =>
-      h("fieldset", { class: "card question" },
-        h("h3", {}, h("span", { class: "qn" }, `Q${qi + 1}`), q.question),
+      h("fieldset", { class: "question" },
+        h("h3", {}, h("span", { class: "qn" }, `Q${qi + 1}`), h("span", {}, q.question)),
         h("div", { class: "options" },
           q.options.map((opt, oi) =>
             h("label", { class: "option" }, h("input", { type: "radio", name: q.id, value: String(oi) }), opt),
@@ -290,28 +301,36 @@ const FLAG_TEXT = {
 };
 
 function ring(score) {
-  const r = 56;
+  const r = 64;
   const c = 2 * Math.PI * r;
-  const color = score >= 70 ? "var(--good)" : score >= 40 ? "var(--warn)" : "var(--bad)";
+  const color = score >= 70 ? "#22c55e" : score >= 40 ? "#fbbf24" : "#f87171";
   return h("div", { class: "ring" },
-    s("svg", { width: 132, height: 132, viewBox: "0 0 132 132" },
-      s("circle", { cx: 66, cy: 66, r, fill: "none", stroke: "var(--surface-2)", "stroke-width": 11 }),
-      s("circle", { cx: 66, cy: 66, r, fill: "none", stroke: color, "stroke-width": 11, "stroke-linecap": "round", "stroke-dasharray": `${(c * score) / 100} ${c}` }),
+    s("svg", { width: 152, height: 152, viewBox: "0 0 152 152" },
+      s("circle", { cx: 76, cy: 76, r, fill: "none", stroke: "rgba(255,255,255,.1)", "stroke-width": 12 }),
+      s("circle", { cx: 76, cy: 76, r, fill: "none", stroke: color, "stroke-width": 12, "stroke-linecap": "round", "stroke-dasharray": `${(c * score) / 100} ${c}` }),
     ),
     h("div", { class: "val" }, h("div", {}, h("b", {}, score), h("span", {}, "최종 점수"))),
   );
 }
 
-function barRow(label, sub, value) {
-  return h("div", { class: "bar-row" },
-    h("div", { class: "label" }, label, " ", h("small", {}, sub)),
-    h("div", { class: "bar" }, h("i", { style: { width: `${value}%` } })),
-    h("div", { class: "v" }, value),
+function verdict(score) {
+  if (score >= 70) return ["", "우수", "지문을 꼼꼼히 읽고 내용도 잘 이해했어요."];
+  if (score >= 40) return ["warn", "보통", "건너뛴 문단이나 틀린 문항을 다시 확인해 보세요."];
+  return ["bad", "노력 필요", "문단마다 충분히 머무르며 천천히 읽어 보세요."];
+}
+
+function barRow(label, value, color, shown = `${value}`) {
+  return h("div", { class: "row" },
+    h("div", {}, h("span", {}, label), h("b", {}, shown)),
+    h("div", { class: "bar" }, h("i", { style: { width: `${Math.max(1, Math.min(100, value))}%`, background: color } })),
   );
 }
 
-function metric(label, value, unit) {
-  return h("div", { class: "card metric" }, h("dt", {}, label), h("dd", {}, value, unit ? h("small", {}, unit) : null));
+function metric(iconName, label, value, unit) {
+  return h("div", { class: "metric" },
+    h("span", { class: "tile" }, icon(iconName)),
+    h("div", {}, h("dt", {}, label), h("dd", {}, value, unit ? h("small", {}, unit) : null)),
+  );
 }
 
 function renderResults() {
@@ -320,24 +339,34 @@ function renderResults() {
   const regress = m.regressions_within_line + m.regressions_between_paragraphs;
   const flags = r.flags.map((f) => FLAG_TEXT[f]).filter(Boolean);
   if (st.mode === "mouse") flags.unshift("마우스 데모 결과예요. 마우스 위치를 시선으로 간주했어요.");
+  const [vcls, vlabel, vnote] = verdict(r.final_score);
 
   el.resultsTop.replaceChildren(
-    h("div", { class: "card score-hero" },
-      ring(r.final_score),
-      h("div", { class: "breakdown" },
-        h("h2", {}, `${st.userId}님의 읽기 결과`),
-        barRow("시선 점수", "×0.6", r.gaze_score),
-        barRow("퀴즈 점수", "×0.4", r.quiz_score),
-        h("p", { class: "hint", style: { margin: 0 } }, "시선 점수는 각 문단에 그 길이만큼 충분히 머물렀는지를 단어 수로 가중 평균한 값이에요."),
+    h("div", { class: "section-head", style: { marginTop: 0 } },
+      h("div", {}, h("span", { class: "eyebrow" }, "Reading report"), h("h2", {}, `${st.userId}님의 읽기 리포트`)),
+      h("span", { class: "chip" }, new Date(st.startedAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })),
+    ),
+    h("div", { class: "report" },
+      h("div", { class: "report-score dark" },
+        ring(r.final_score),
+        h("div", { class: "verdict" }, h("b", { class: vcls }, vlabel), vnote),
+      ),
+      h("div", { class: "card report-bars" },
+        h("h3", {}, "점수 구성"),
+        barRow("시선 점수 (문단 커버리지)", r.gaze_score, "var(--green)"),
+        barRow("퀴즈 점수", r.quiz_score, "var(--violet)"),
+        barRow("본문 응시 비율", Math.round(m.on_text_ratio * 100), "var(--cyan)", `${Math.round(m.on_text_ratio * 100)}%`),
+        barRow("읽기 속도", (m.wpm / 300) * 100, "var(--orange)", `${m.wpm} WPM`),
+        h("p", { class: "formula" }, "최종 점수 = 시선 ", h("b", {}, r.gaze_score), " × 0.6 + 퀴즈 ", h("b", {}, r.quiz_score), " × 0.4 = ", h("b", {}, r.final_score)),
       ),
     ),
-    h("dl", { class: "metrics", style: { margin: 0 } },
-      metric("읽기 시간", fmtDuration(m.duration_ms)),
-      metric("읽기 속도", m.wpm, "WPM"),
-      metric("고정(fixation)", m.fixations, `회 · 평균 ${m.mean_fixation_ms}ms`),
-      metric("되돌아 읽기", regress, `회 · ${Math.round(m.regression_rate * 100)}%`),
-      metric("본문 응시 비율", Math.round(m.on_text_ratio * 100), "%"),
-      st.calib ? metric("보정 오차", st.calib.errorPx, "px") : metric("수집 빈도", m.sample_rate_hz, "Hz"),
+    h("dl", { class: "metrics" },
+      metric("i-clock", "읽기 시간", fmtDuration(m.duration_ms)),
+      metric("i-eye", "고정(fixation)", m.fixations, `회 · 평균 ${m.mean_fixation_ms}ms`),
+      metric("i-rewind", "되돌아 읽기", regress, `회 · ${Math.round(m.regression_rate * 100)}%`),
+      metric("i-layers", "건너뛴 문단", m.skipped_paragraphs.length, "개"),
+      st.calib ? metric("i-target", "보정 오차", st.calib.errorPx, "px") : metric("i-scan", "측정 방식", "마우스"),
+      metric("i-chart", "수집 빈도", m.sample_rate_hz, "Hz"),
     ),
     flags.length ? h("div", { class: "flags" }, flags.map((f) => h("div", { class: "flag" }, f))) : null,
   );
@@ -379,12 +408,14 @@ window.addEventListener("resize", () => { if (document.body.dataset.state === "r
 function renderReview(feedback) {
   const correct = feedback.filter((f) => f.correct).length;
   el.review.replaceChildren(
-    h("div", { class: "section-head" }, h("h2", {}, `퀴즈 리뷰 · ${correct}/${feedback.length}`)),
+    h("div", { class: "section-head" },
+      h("div", {}, h("span", { class: "eyebrow" }, "Quiz review"), h("h2", {}, "퀴즈 리뷰")),
+      h("span", { class: `chip ${correct === feedback.length ? "good" : "accent"}` }, `${correct} / ${feedback.length} 정답`)),
     ...st.article.quiz.map((q, qi) => {
       const f = feedback.find((x) => x.id === q.id);
-      return h("div", { class: "card question" },
-        h("h3", {}, h("span", { class: "qn" }, `Q${qi + 1}`), q.question,
-          h("span", { class: `chip ${f.correct ? "good" : "bad"}`, style: { marginLeft: "auto" } }, f.correct ? "정답" : f.given == null ? "미응답" : "오답")),
+      return h("div", { class: "question" },
+        h("h3", {}, h("span", { class: "qn" }, `Q${qi + 1}`), h("span", { style: { flex: 1 } }, q.question),
+          h("span", { class: `chip ${f.correct ? "good" : "bad"}` }, f.correct ? "정답" : f.given == null ? "미응답" : "오답")),
         h("div", { class: "options" },
           q.options.map((opt, oi) =>
             h("div", { class: `option ${oi === f.answer ? "correct" : oi === f.given ? "wrong" : ""}` }, opt),
@@ -394,6 +425,11 @@ function renderReview(feedback) {
     }),
   );
 }
+
+$("#ctaStart").addEventListener("click", () => {
+  el.form.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => el.userId.focus({ preventScroll: true }), 400);
+});
 
 $("#restart").addEventListener("click", () => location.reload());
 
