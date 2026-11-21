@@ -300,37 +300,37 @@ const FLAG_TEXT = {
   gaze_mostly_off_text: "시선이 대부분 본문 밖에서 측정됐어요. 보정을 다시 해 보세요.",
 };
 
-function ring(score) {
-  const r = 64;
-  const c = 2 * Math.PI * r;
-  const color = score >= 70 ? "#22c55e" : score >= 40 ? "#fbbf24" : "#f87171";
-  return h("div", { class: "ring" },
-    s("svg", { width: 152, height: 152, viewBox: "0 0 152 152" },
-      s("circle", { cx: 76, cy: 76, r, fill: "none", stroke: "rgba(255,255,255,.1)", "stroke-width": 12 }),
-      s("circle", { cx: 76, cy: 76, r, fill: "none", stroke: color, "stroke-width": 12, "stroke-linecap": "round", "stroke-dasharray": `${(c * score) / 100} ${c}` }),
-    ),
-    h("div", { class: "val" }, h("div", {}, h("b", {}, score), h("span", {}, "최종 점수"))),
-  );
-}
+const LEVEL = [
+  { min: 70, label: "기대 수준 이상", color: "var(--teal)" },
+  { min: 40, label: "기대 수준 근접", color: "var(--teal-light)" },
+  { min: -1, label: "지원 필요", color: "var(--pink)" },
+];
+const levelOf = (score) => LEVEL.find((l) => score >= l.min);
+const aoiLabel = (id) => (id === "title" ? "제목" : id === "lead" ? "도입부" : `${id.slice(1)}문단`);
+const coverageColor = (c) => (c >= 0.75 ? "var(--teal)" : c >= 0.25 ? "var(--teal-light)" : "var(--pink)");
 
-function verdict(score) {
-  if (score >= 70) return ["", "우수", "지문을 꼼꼼히 읽고 내용도 잘 이해했어요."];
-  if (score >= 40) return ["warn", "보통", "건너뛴 문단이나 틀린 문항을 다시 확인해 보세요."];
-  return ["bad", "노력 필요", "문단마다 충분히 머무르며 천천히 읽어 보세요."];
-}
-
-function barRow(label, value, color, shown = `${value}`) {
+function partRow(label, value, color, shown = `${value}`) {
   return h("div", { class: "row" },
-    h("div", {}, h("span", {}, label), h("b", {}, shown)),
+    h("span", {}, label),
     h("div", { class: "bar" }, h("i", { style: { width: `${Math.max(1, Math.min(100, value))}%`, background: color } })),
+    h("b", {}, shown),
   );
 }
 
-function metric(iconName, label, value, unit) {
-  return h("div", { class: "metric" },
-    h("span", { class: "tile" }, icon(iconName)),
-    h("div", {}, h("dt", {}, label), h("dd", {}, value, unit ? h("small", {}, unit) : null)),
-  );
+function recommendations(r, wrong) {
+  const m = r.metrics;
+  const out = [];
+  const body = m.paragraphs.filter((p) => p.id !== "title");
+  const skipped = body.filter((p) => p.coverage < 0.25).map((p) => aoiLabel(p.id));
+  const partial = body.filter((p) => p.coverage >= 0.25 && p.coverage < 0.75).map((p) => aoiLabel(p.id));
+  if (skipped.length) out.push(`${skipped.join(", ")}을(를) 거의 읽지 않았어요. 이 부분부터 다시 읽어 보세요.`);
+  if (partial.length) out.push(`${partial.join(", ")}은(는) 빠르게 훑고 지나갔어요. 문장 단위로 천천히 읽어 보세요.`);
+  if (m.wpm > 250) out.push(`읽기 속도가 분당 ${m.wpm}단어로 빠른 편이에요. 모르는 단어에서 잠시 멈추며 읽어 보세요.`);
+  if (m.regression_rate > 0.2) out.push(`되돌아 읽은 비율이 ${Math.round(m.regression_rate * 100)}%로 높았어요. 어려웠던 문장을 표시해 두고 선생님께 물어보세요.`);
+  if (wrong) out.push(`퀴즈에서 ${wrong}문항을 틀렸어요. 아래 퀴즈 리뷰에서 정답과 관련 문단을 확인해 보세요.`);
+  if (st.mode === "webcam" && m.on_text_ratio < 0.6) out.push("시선이 본문 밖에서 측정된 시간이 길었어요. 다음에는 보정을 다시 하고 시작해 보세요.");
+  if (!out.length) out.push("모든 문단을 충분히 읽고 내용도 잘 이해했어요. 한 단계 높은 지문에 도전해 보세요.");
+  return out;
 }
 
 function renderResults() {
@@ -339,34 +339,63 @@ function renderResults() {
   const regress = m.regressions_within_line + m.regressions_between_paragraphs;
   const flags = r.flags.map((f) => FLAG_TEXT[f]).filter(Boolean);
   if (st.mode === "mouse") flags.unshift("마우스 데모 결과예요. 마우스 위치를 시선으로 간주했어요.");
-  const [vcls, vlabel, vnote] = verdict(r.final_score);
+  const lv = levelOf(r.final_score);
+  const correct = r.quiz_feedback.filter((f) => f.correct).length;
+  const total = r.quiz_feedback.length;
+
+  // word-weighted reading profile
+  const words = m.paragraphs.reduce((a, p) => a + p.words, 0) || 1;
+  const share = (pred) => Math.round((100 * m.paragraphs.filter(pred).reduce((a, p) => a + p.words, 0)) / words);
+  const full = share((p) => p.coverage >= 0.75);
+  const skip = share((p) => p.coverage < 0.25);
+  const part = Math.max(0, 100 - full - skip);
 
   el.resultsTop.replaceChildren(
-    h("div", { class: "section-head", style: { marginTop: 0 } },
-      h("div", {}, h("span", { class: "eyebrow" }, "Reading report"), h("h2", {}, `${st.userId}님의 읽기 리포트`)),
-      h("span", { class: "chip" }, new Date(st.startedAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })),
+    h("div", { class: "report-head" },
+      h("div", {}, h("span", { class: "eyebrow" }, "Reading report"), h("h2", {}, st.userId)),
+      h("span", { class: "when" }, new Date(st.startedAt).toLocaleString("ko-KR", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })),
     ),
-    h("div", { class: "report" },
-      h("div", { class: "report-score dark" },
-        ring(r.final_score),
-        h("div", { class: "verdict" }, h("b", { class: vcls }, vlabel), vnote),
+    h("div", { class: "facts" },
+      h("span", {}, h("span", { class: "sq", style: { background: lv.color } }), "읽기 수준 ", h("b", {}, lv.label)),
+      h("span", {}, "퀴즈 ", h("b", {}, `${correct}/${total}`), " 정답"),
+      h("span", {}, "읽기 속도 ", h("b", {}, `${m.wpm} WPM`)),
+      h("span", {}, "읽기 시간 ", h("b", {}, fmtDuration(m.duration_ms))),
+      h("span", {}, st.calib ? ["보정 오차 ", h("b", {}, `${st.calib.errorPx}px`)] : ["측정 ", h("b", {}, "마우스 데모")]),
+    ),
+    h("div", { class: "score-row" },
+      h("div", { class: "big-score" },
+        h("b", {}, r.final_score, h("small", {}, "/100")),
+        h("span", {}, "최종 점수"),
+        h("span", { class: "verdict" }, h("span", { class: "sq", style: { background: lv.color } }), lv.label),
       ),
-      h("div", { class: "card report-bars" },
-        h("h3", {}, "점수 구성"),
-        barRow("시선 점수 (문단 커버리지)", r.gaze_score, "var(--green)"),
-        barRow("퀴즈 점수", r.quiz_score, "var(--violet)"),
-        barRow("본문 응시 비율", Math.round(m.on_text_ratio * 100), "var(--cyan)", `${Math.round(m.on_text_ratio * 100)}%`),
-        barRow("읽기 속도", (m.wpm / 300) * 100, "var(--orange)", `${m.wpm} WPM`),
-        h("p", { class: "formula" }, "최종 점수 = 시선 ", h("b", {}, r.gaze_score), " × 0.6 + 퀴즈 ", h("b", {}, r.quiz_score), " × 0.4 = ", h("b", {}, r.final_score)),
+      h("div", { class: "score-parts" },
+        partRow("시선 점수", r.gaze_score, "var(--teal)"),
+        partRow("퀴즈 점수", r.quiz_score, "var(--teal-2)"),
+        partRow("본문 응시 비율", Math.round(m.on_text_ratio * 100), "var(--teal-light)", `${Math.round(m.on_text_ratio * 100)}%`),
+        h("p", { class: "formula" }, `최종 점수 = 시선 ${r.gaze_score} × 0.6 + 퀴즈 ${r.quiz_score} × 0.4. 시선 점수는 각 문단에 길이만큼 충분히 머물렀는지를 단어 수로 가중 평균한 값이에요.`),
       ),
     ),
-    h("dl", { class: "metrics" },
-      metric("i-clock", "읽기 시간", fmtDuration(m.duration_ms)),
-      metric("i-eye", "고정(fixation)", m.fixations, `회 · 평균 ${m.mean_fixation_ms}ms`),
-      metric("i-rewind", "되돌아 읽기", regress, `회 · ${Math.round(m.regression_rate * 100)}%`),
-      metric("i-layers", "건너뛴 문단", m.skipped_paragraphs.length, "개"),
-      st.calib ? metric("i-target", "보정 오차", st.calib.errorPx, "px") : metric("i-scan", "측정 방식", "마우스"),
-      metric("i-chart", "수집 빈도", m.sample_rate_hz, "Hz"),
+    h("div", { class: "profile" },
+      h("h3", {}, "단어 기준 읽기 프로필"),
+      h("div", { class: "stack" },
+        h("i", { style: { width: `${full}%`, background: "var(--teal)" } }),
+        h("i", { style: { width: `${part}%`, background: "var(--teal-light)" } }),
+        h("i", { style: { width: `${skip}%`, background: "var(--pink)" } }),
+      ),
+      h("div", { class: "legend-row" },
+        h("span", {}, h("span", { class: "sq", style: { background: "var(--teal)" } }), `충분히 읽음 ${full}%`),
+        h("span", {}, h("span", { class: "sq", style: { background: "var(--teal-light)" } }), `훑어 읽음 ${part}%`),
+        h("span", {}, h("span", { class: "sq", style: { background: "var(--pink)" } }), `건너뜀 ${skip}%`),
+      ),
+    ),
+    h("div", { class: "two-col" },
+      h("div", { class: "next" }, h("h3", {}, "다음에 해 볼 것"), h("ul", {}, recommendations(r, total - correct).map((t) => h("li", {}, t)))),
+      h("dl", { class: "metric-list" },
+        mrow("고정(fixation)", `${m.fixations}회 · 평균 ${m.mean_fixation_ms}ms`),
+        mrow("되돌아 읽기", `${regress}회 · ${Math.round(m.regression_rate * 100)}%`),
+        mrow("건너뛴 문단", `${m.skipped_paragraphs.filter((id) => id !== "title").length}개`),
+        mrow("수집 빈도", `${m.sample_rate_hz} Hz`),
+      ),
     ),
     flags.length ? h("div", { class: "flags" }, flags.map((f) => h("div", { class: "flag" }, f))) : null,
   );
@@ -376,17 +405,21 @@ function renderResults() {
   renderReview(r.quiz_feedback);
 }
 
+function mrow(label, value) {
+  return h("div", {}, h("dt", {}, label), h("dd", {}, value));
+}
+
 function annotateParagraphs(paragraphs) {
   el.article.querySelectorAll(".aoi-badge, .aoi-bar").forEach((n) => n.remove());
   for (const p of paragraphs) {
     const node = el.article.querySelector(`[data-aoi="${CSS.escape(p.id)}"]`);
     if (!node) continue;
     const pct = Math.round(p.coverage * 100);
-    const cls = p.coverage >= 0.75 ? "good" : p.coverage >= 0.25 ? "warn" : "bad";
+    const cls = p.coverage >= 0.75 ? "good" : p.coverage >= 0.25 ? "accent" : "bad";
     const label = p.coverage < 0.25 ? `건너뜀 · ${(p.dwell_ms / 1000).toFixed(1)}초` : `읽음 ${pct}% · ${(p.dwell_ms / 1000).toFixed(1)}초`;
     node.append(
       h("span", { class: `aoi-badge chip ${cls}` }, label),
-      h("span", { class: "aoi-bar", style: { background: `var(--${cls})` } }),
+      h("span", { class: "aoi-bar", style: { background: coverageColor(p.coverage) } }),
     );
   }
 }
@@ -397,7 +430,7 @@ function drawLayers() {
   const ctx = sizeCanvas(el.overlay, w, hh);
   const fx = st.result?.metrics.fixation_list || [];
   if ($("#layerHeat").checked) drawHeatmap(ctx, w, hh, fx);
-  if ($("#layerPath").checked) drawScanpath(ctx, fx, getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#2f54c9");
+  if ($("#layerPath").checked) drawScanpath(ctx, fx, "#1b6676");
   const showAoi = $("#layerAoi").checked;
   el.article.querySelectorAll(".aoi-badge, .aoi-bar").forEach((n) => { n.hidden = !showAoi; });
 }
@@ -426,6 +459,7 @@ function renderReview(feedback) {
   );
 }
 
+$("#heroStart").addEventListener("click", () => el.userId.focus());
 $("#ctaStart").addEventListener("click", () => {
   el.form.scrollIntoView({ behavior: "smooth", block: "center" });
   setTimeout(() => el.userId.focus({ preventScroll: true }), 400);
