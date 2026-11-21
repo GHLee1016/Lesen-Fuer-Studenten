@@ -62,6 +62,27 @@ class AnalysisParams:
     # staying on roughly the same line.
     regression_min_dx: float = 80.0
     skipped_coverage: float = 0.25
+    # --- difficulty -------------------------------------------------------
+    # A fixation belongs to a word if it is within this distance of the
+    # word box (vertical tolerance is a fraction of the line height).
+    word_margin_x: float = 30.0
+    word_margin_y_lines: float = 0.45
+    # Sentence is "slow" when its time per word is this many times the
+    # reader's own median, and it took at least min_sentence_ms.
+    slow_factor: float = 1.75
+    min_sentence_ms: float = 1200.0
+    min_sentence_words: int = 3
+    # Sentence is "re-read" when the reader came back to it this many times
+    # after moving on to a later sentence.
+    reread_returns: int = 2
+    # Word candidates: long dwell compared with the reader's median word dwell.
+    word_min_ms: float = 700.0
+    word_factor: float = 3.5
+    max_difficult_words: int = 12
+    # Penalty in score points.
+    penalty_sentence_weight: float = 40.0  # x share of words in difficult sentences
+    penalty_per_word: float = 1.5
+    max_penalty: float = 25.0
 
 
 def detect_fixations(samples: Sequence[Sample], p: AnalysisParams = AnalysisParams()) -> list[Fixation]:
@@ -135,12 +156,134 @@ def count_regressions(fixations: Sequence[Fixation], hits: Sequence[str | None],
     return within, between
 
 
+@dataclass(frozen=True)
+class Word:
+    x: float
+    y: float
+    w: float
+    h: float
+    s: int  # sentence index
+
+
+def _median(values: list[float]) -> float:
+    v = sorted(values)
+    n = len(v)
+    if not n:
+        return 0.0
+    return v[n // 2] if n % 2 else (v[n // 2 - 1] + v[n // 2]) / 2
+
+
+def assign_words(fixations: Sequence[Fixation], words: Sequence[Word], line_height: float, p: AnalysisParams) -> list[int | None]:
+    """Nearest word for every fixation (or None when it is between lines / off text)."""
+    # bucket words by line so each fixation only checks nearby rows
+    rows: dict[int, list[int]] = {}
+    for i, w in enumerate(words):
+        rows.setdefault(int((w.y + w.h / 2) // line_height), []).append(i)
+    max_dy = line_height * p.word_margin_y_lines
+    out: list[int | None] = []
+    for f in fixations:
+        r = int(f.y // line_height)
+        best, best_cost = None, float("inf")
+        for rr in (r - 1, r, r + 1):
+            for i in rows.get(rr, ()):
+                w = words[i]
+                dx = max(0.0, w.x - f.x, f.x - (w.x + w.w))
+                dy = max(0.0, w.y - f.y, f.y - (w.y + w.h))
+                if dx > p.word_margin_x or dy > max_dy:
+                    continue
+                cost = dx + 2 * dy
+                if cost < best_cost:
+                    best, best_cost = i, cost
+        out.append(best)
+    return out
+
+
+def difficulty(fixations: Sequence[Fixation], words: Sequence[Word], line_height: float, p: AnalysisParams = AnalysisParams()) -> dict:
+    """Find sentences and words the reader struggled with.
+
+    * slow: time per word in a sentence far above the reader's own median
+    * reread: the reader went back to the sentence after reading further on
+    * word candidates: unusually long dwell on one word, or returns to it
+    Webcam gaze is only accurate to about a line, so word results are
+    candidates; sentence results are the reliable unit.
+    """
+    hits = assign_words(fixations, words, line_height, p)
+    n_sent = max((w.s for w in words), default=-1) + 1
+    s_words = [0] * n_sent
+    for w in words:
+        s_words[w.s] += 1
+    s_dwell = [0.0] * n_sent
+    s_returns = [0] * n_sent
+    w_dwell = [0.0] * len(words)
+    w_returns = [0] * len(words)
+
+    max_sentence_seen = -1
+    prev_sentence = None
+    last_visit_word = {}
+    for k, (f, wi) in enumerate(zip(fixations, hits)):
+        if wi is None:
+            continue
+        s = words[wi].s
+        s_dwell[s] += f.duration
+        w_dwell[wi] += f.duration
+        if s != prev_sentence and s < max_sentence_seen:
+            s_returns[s] += 1  # came back from later text
+        if wi in last_visit_word and last_visit_word[wi] < k - 1:
+            # left the word and came back; only count it if a later sentence was read in between
+            if any(h is not None and words[h].s > s for h in hits[last_visit_word[wi] + 1 : k]):
+                w_returns[wi] += 1
+        last_visit_word[wi] = k
+        prev_sentence = s
+        max_sentence_seen = max(max_sentence_seen, s)
+
+    rates = [s_dwell[i] / s_words[i] for i in range(n_sent) if s_dwell[i] > 0 and s_words[i] >= p.min_sentence_words]
+    baseline = _median(rates)
+
+    sentences = []
+    difficult_words_in_sentences = 0
+    for i in range(n_sent):
+        rate = s_dwell[i] / s_words[i] if s_words[i] else 0.0
+        reasons = []
+        if baseline and s_words[i] >= p.min_sentence_words and s_dwell[i] >= p.min_sentence_ms and rate >= p.slow_factor * baseline:
+            reasons.append("slow")
+        if s_returns[i] >= p.reread_returns:
+            reasons.append("reread")
+        if reasons:
+            difficult_words_in_sentences += s_words[i]
+        sentences.append({"s": i, "words": s_words[i], "dwell_ms": round(s_dwell[i]), "ms_per_word": round(rate), "returns": s_returns[i], "reasons": reasons})
+
+    fixated = [d for d in w_dwell if d > 0]
+    w_base = _median(fixated)
+    threshold = max(p.word_min_ms, p.word_factor * w_base)
+    cand = [
+        {"i": i, "dwell_ms": round(w_dwell[i]), "returns": w_returns[i]}
+        for i in range(len(words))
+        if w_dwell[i] >= threshold or w_returns[i] >= 2
+    ]
+    cand.sort(key=lambda c: (c["returns"], c["dwell_ms"]), reverse=True)
+    cand = cand[: p.max_difficult_words]
+
+    total = len(words) or 1
+    share = difficult_words_in_sentences / total
+    penalty = min(p.max_penalty, round(p.penalty_sentence_weight * share + p.penalty_per_word * len(cand)))
+    return {
+        "baseline_ms_per_word": round(baseline),
+        "sentences": sentences,
+        "difficult_sentences": [x["s"] for x in sentences if x["reasons"]],
+        "difficult_words": cand,
+        "difficult_share": round(share, 3),
+        "penalty": int(penalty),
+        "word_hits": sum(1 for h in hits if h is not None),
+    }
+
+
 def analyze(
     samples: Iterable[Sample],
     aois: Sequence[AOI],
     duration_ms: float,
     line_height: float = 30.0,
     p: AnalysisParams = AnalysisParams(),
+    words: Sequence[Word] | None = None,
 ) -> dict:
     samples = list(samples)
     fixations = detect_fixations(samples, p)
@@ -188,7 +331,9 @@ def analyze(
     on_text_fix = sum(1 for h in hits if h is not None)
     minutes = duration_ms / 60000.0
 
+    diff = difficulty(fixations, words, line_height, p) if words else None
     return {
+        "difficulty": diff,
         "duration_ms": round(duration_ms),
         "samples": len(samples),
         "sample_rate_hz": round(len(samples) / (duration_ms / 1000.0), 1) if duration_ms > 0 else 0.0,
@@ -211,7 +356,9 @@ def analyze(
 
 
 def gaze_score(metrics: dict) -> int:
-    return round(100 * metrics["reading_coverage"])
+    """Paragraph coverage minus the difficulty penalty."""
+    penalty = (metrics.get("difficulty") or {}).get("penalty", 0)
+    return max(0, round(100 * metrics["reading_coverage"]) - penalty)
 
 
 def final_score(gaze: float, quiz: float, gaze_weight: float = 0.6) -> int:

@@ -24,8 +24,8 @@ from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
-from . import analysis, config, db
-from .content import grade_quiz, load_articles, public_article
+from . import analysis, config, db, dw, translate
+from .content import get_article, grade_quiz, load_articles, public_article, summary
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = config.log
@@ -94,20 +94,94 @@ def require_admin(authorization: str | None = Header(None)) -> None:
 # ------------------------------------------------------------ articles ----
 
 
+LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"]
+
+
+def _level_key(a: dict):
+    lv = (a.get("level") or "?")[:2]
+    return (LEVEL_ORDER.index(lv) if lv in LEVEL_ORDER else 99, a["title"])
+
+
 @app.get("/api/articles")
 def list_articles():
-    return [
-        {"id": a["id"], "title": a["title"], "level": a["level"], "words": a["words"]}
-        for a in load_articles().values()
-    ]
+    return [summary(a) for a in sorted(load_articles().values(), key=_level_key)]
 
 
 @app.get("/api/articles/{article_id}")
-def get_article(article_id: str):
-    article = load_articles().get(article_id)
+def article_detail(article_id: str):
+    article = get_article(article_id)
     if article is None:
         raise HTTPException(status_code=404, detail="Unknown article")
     return public_article(article)
+
+
+# --------------------------------------------------------- lookups/vocab ----
+
+
+@app.get("/api/languages")
+def languages():
+    return {"languages": translate.LANGUAGES, "provider": "claude" if translate.claude_available() else "mymemory"}
+
+
+class LookupIn(BaseModel):
+    user_id: str = Field(pattern=USER_ID_PATTERN)
+    article_id: str = Field(max_length=80)
+    word: str = Field(min_length=1, max_length=80)
+    sentence: str = Field(default="", max_length=1200)
+    lang: str = Field(max_length=5)
+
+
+@app.post("/api/lookup")
+async def lookup(body: LookupIn):
+    if body.lang not in translate.LANGUAGES:
+        raise HTTPException(status_code=400, detail="Unsupported language")
+    word = translate.clean_word(body.word)
+    if not word:
+        raise HTTPException(status_code=400, detail="Not a word")
+    g = await run_in_threadpool(translate.gloss, word, body.sentence, body.lang, db.cache_get, db.cache_put)
+    if g is None:
+        raise HTTPException(status_code=503, detail="Translation service unavailable")
+    article = get_article(body.article_id)
+    dw_def = None
+    if article:
+        lw = word.lower()
+        for entry in article.get("glossary", []):
+            if any(lw == s.lower() or lw in s.lower().split() for s in entry["surface"]):
+                dw_def = {"term": entry["term"], "definition": entry["definition"]}
+                break
+    entry = await run_in_threadpool(db.add_vocab, body.user_id, body.lang, g, body.sentence, body.article_id)
+    return {"word": word, **g, "dw": dw_def, "vocab_id": entry["id"], "lookups": entry["lookups"]}
+
+
+@app.get("/api/vocab")
+def vocab_list(user_id: str):
+    return {"user_id": user_id, "items": db.list_vocab(user_id)}
+
+
+@app.delete("/api/vocab/{vocab_id}")
+def vocab_delete(vocab_id: int, user_id: str):
+    if not db.delete_vocab(user_id, vocab_id):
+        raise HTTPException(status_code=404, detail="Unknown entry")
+    return {"ok": True}
+
+
+def _vocab_csv(items: list[dict]) -> str:
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["German", "Meaning", "Part of speech", "Example", "Lookups"])
+    for v in items:
+        de = f"{v['article']} {v['lemma']}".strip()
+        w.writerow([de, v["translation"], v["pos"], v["example"], v["lookups"]])
+    return buf.getvalue()
+
+
+@app.get("/api/vocab.csv")
+def vocab_csv(user_id: str):
+    return Response(
+        "\ufeff" + _vocab_csv(db.list_vocab(user_id)),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="vocabulary.csv"'},
+    )
 
 
 # ------------------------------------------------------------ sessions ----
@@ -141,7 +215,15 @@ class SessionIn(BaseModel):
     aois: list[AOIIn] = Field(min_length=1, max_length=200)
     # [t_ms, x, y] triples, t relative to reading start
     samples: list[tuple[float, float, float]] = Field(max_length=config.MAX_SAMPLES)
-    answers: dict[str, int] = Field(default_factory=dict)
+    # [x, y, w, h, sentence] per word, in reading order
+    words: list[tuple[float, float, float, float, int]] = Field(default_factory=list, max_length=6000)
+    lookups: list[dict] = Field(default_factory=list, max_length=500)
+    answers: dict[str, list[int] | int] = Field(default_factory=dict)
+
+    @field_validator("answers")
+    @classmethod
+    def answers_as_lists(cls, v):
+        return {k: (a if isinstance(a, list) else [a]) for k, a in v.items()}
 
     @field_validator("aois")
     @classmethod
@@ -154,9 +236,12 @@ class SessionIn(BaseModel):
 def _evaluate(body: SessionIn, article: dict) -> dict:
     samples = [analysis.Sample(t, x, y) for t, x, y in body.samples]
     aois = [analysis.AOI(a.id, a.x, a.y, a.w, a.h, a.words) for a in body.aois]
-    metrics = analysis.analyze(samples, aois, body.duration_ms, body.layout.line_height)
+    words = [analysis.Word(*w) for w in body.words]
+    metrics = analysis.analyze(samples, aois, body.duration_ms, body.layout.line_height, words=words or None)
     gaze = analysis.gaze_score(metrics)
     quiz, feedback = grade_quiz(article, body.answers)
+    # Without quiz questions the final score is the gaze score alone.
+    final = analysis.final_score(gaze, quiz, config.GAZE_WEIGHT) if article["quiz"] else gaze
     return {
         "id": uuid.uuid4().hex,
         "user_id": body.user_id,
@@ -167,19 +252,21 @@ def _evaluate(body: SessionIn, article: dict) -> dict:
         "calib_error_px": body.calibration_error_px,
         "gaze_score": gaze,
         "quiz_score": quiz,
-        "final_score": analysis.final_score(gaze, quiz, config.GAZE_WEIGHT),
+        "final_score": final,
         "flags": analysis.quality_flags(metrics, body.calibration_error_px, body.layout.line_height),
         "metrics": metrics,
         "answers": body.answers,
-        "layout": {**body.layout.model_dump(), "aois": [a.model_dump() for a in body.aois]},
+        "layout": {**body.layout.model_dump(), "aois": [a.model_dump() for a in body.aois], "words": [list(w) for w in body.words]},
         "samples": [list(s) for s in body.samples],
+        "lookups": [{"t": l.get("t"), "i": l.get("i"), "word": str(l.get("word", ""))[:80]} for l in body.lookups],
+        "marks": (metrics.get("difficulty") or {}).get("difficult_sentences", []),
         "quiz_feedback": feedback,
     }
 
 
 @app.post("/api/sessions")
 async def submit_session(body: SessionIn):
-    article = load_articles().get(body.article_id)
+    article = get_article(body.article_id)
     if article is None:
         raise HTTPException(status_code=404, detail="Unknown article")
     result = await run_in_threadpool(_evaluate, body, article)
@@ -193,8 +280,23 @@ async def submit_session(body: SessionIn):
         "final_score": result["final_score"],
         "flags": result["flags"],
         "metrics": result["metrics"],
+        "marks": result["marks"],
+        "has_quiz": bool(article["quiz"]),
         "quiz_feedback": feedback,
     }
+
+
+class MarksIn(BaseModel):
+    sentences: list[int] = Field(max_length=2000)
+
+
+@app.put("/api/sessions/{session_id}/marks")
+async def set_marks(session_id: str, body: MarksIn):
+    """Sentences the student marked as difficult (session id acts as the key)."""
+    if not db.set_marks(session_id, sorted(set(body.sentences))):
+        raise HTTPException(status_code=404, detail="Unknown session")
+    await admin_hub.broadcast_overview()
+    return {"ok": True}
 
 
 # --------------------------------------------------------------- admin ----
@@ -236,7 +338,38 @@ def admin_user(user_id: str):
     sessions = db.user_sessions(user_id)
     if not sessions:
         raise HTTPException(status_code=404, detail="Unknown user")
-    return {"user_id": user_id, "sessions": sessions}
+    return {"user_id": user_id, "sessions": sessions, "vocab": db.list_vocab(user_id)}
+
+
+class ImportIn(BaseModel):
+    url: str = Field(max_length=500)
+
+
+@app.post("/api/admin/articles/import", dependencies=[Depends(require_admin)])
+async def admin_import_article(body: ImportIn):
+    try:
+        article = await run_in_threadpool(dw.import_lesson, body.url)
+    except dw.ImportError_ as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    db.save_article(article)
+    return summary(get_article(article["id"]))
+
+
+@app.get("/api/admin/articles", dependencies=[Depends(require_admin)])
+def admin_articles():
+    return [summary(a) for a in sorted(load_articles().values(), key=_level_key)]
+
+
+@app.delete("/api/admin/articles/{article_id}", dependencies=[Depends(require_admin)])
+def admin_delete_article(article_id: str):
+    if not db.delete_article(article_id):
+        raise HTTPException(status_code=404, detail="Only imported articles can be deleted")
+    return {"ok": True}
+
+
+@app.get("/api/admin/vocab/{user_id}.csv", dependencies=[Depends(require_admin)])
+def admin_vocab_csv(user_id: str):
+    return vocab_csv(user_id)
 
 
 @app.delete("/api/admin/users/{user_id}", dependencies=[Depends(require_admin)])
@@ -257,7 +390,7 @@ def admin_session(session_id: str):
 EXPORT_FIELDS = [
     "id", "user_id", "article_id", "mode", "started_at", "duration_ms", "calib_error_px",
     "gaze_score", "quiz_score", "final_score", "reading_coverage", "wpm", "fixations",
-    "regression_rate", "on_text_ratio", "flags",
+    "regression_rate", "on_text_ratio", "difficulty_penalty", "difficult_sentences", "flags",
 ]
 
 
@@ -268,7 +401,14 @@ def admin_export_csv():
     w.writeheader()
     for s in db.all_sessions(with_metrics=True):
         m = s.pop("metrics")
-        w.writerow({**s, **{k: m[k] for k in ("reading_coverage", "wpm", "fixations", "regression_rate", "on_text_ratio")}, "flags": ";".join(s["flags"])})
+        d = m.get("difficulty") or {}
+        w.writerow({
+            **s,
+            **{k: m[k] for k in ("reading_coverage", "wpm", "fixations", "regression_rate", "on_text_ratio")},
+            "difficulty_penalty": d.get("penalty", 0),
+            "difficult_sentences": len(d.get("difficult_sentences", [])),
+            "flags": ";".join(s["flags"]),
+        })
     return Response(
         buf.getvalue(),
         media_type="text/csv; charset=utf-8",

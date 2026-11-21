@@ -30,7 +30,38 @@ CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS articles (
+    id          TEXT PRIMARY KEY,
+    data        TEXT NOT NULL,
+    imported_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS translations (
+    key        TEXT PRIMARY KEY,
+    result     TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS vocab (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     TEXT NOT NULL,
+    lang        TEXT NOT NULL,
+    lemma       TEXT NOT NULL,
+    article     TEXT NOT NULL DEFAULT '',
+    pos         TEXT NOT NULL DEFAULT '',
+    translation TEXT NOT NULL,
+    example     TEXT NOT NULL DEFAULT '',
+    article_id  TEXT NOT NULL DEFAULT '',
+    lookups     INTEGER NOT NULL DEFAULT 1,
+    created_at  INTEGER NOT NULL,
+    updated_at  INTEGER NOT NULL,
+    UNIQUE (user_id, lang, lemma)
+);
 """
+
+# Columns added after the first release; created on startup if missing.
+MIGRATIONS = [
+    ("sessions", "lookups", "TEXT NOT NULL DEFAULT '[]'"),
+    ("sessions", "marks", "TEXT NOT NULL DEFAULT '[]'"),
+]
 
 SUMMARY_COLS = (
     "id, user_id, article_id, mode, started_at, duration_ms, calib_error_px, "
@@ -58,6 +89,10 @@ def connect():
 def init() -> None:
     with connect() as c:
         c.executescript(SCHEMA)
+        for table, col, decl in MIGRATIONS:
+            cols = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
+            if col not in cols:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
 
 def _summary(row: sqlite3.Row) -> dict:
@@ -69,12 +104,15 @@ def _summary(row: sqlite3.Row) -> dict:
 def insert_session(s: dict) -> None:
     with connect() as c:
         c.execute(
-            "INSERT INTO sessions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sessions (id, user_id, article_id, mode, started_at, duration_ms, calib_error_px, "
+            "gaze_score, quiz_score, final_score, flags, metrics, answers, layout, samples, created_at, lookups, marks) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 s["id"], s["user_id"], s["article_id"], s["mode"], s["started_at"], s["duration_ms"],
                 s["calib_error_px"], s["gaze_score"], s["quiz_score"], s["final_score"],
                 json.dumps(s["flags"]), json.dumps(s["metrics"]), json.dumps(s["answers"]),
                 json.dumps(s["layout"]), json.dumps(s["samples"]), int(time.time() * 1000),
+                json.dumps(s.get("lookups", [])), json.dumps(s.get("marks", [])),
             ),
         )
 
@@ -123,7 +161,7 @@ def get_session(session_id: str) -> dict | None:
     if r is None:
         return None
     d = dict(r)
-    for k in ("flags", "metrics", "answers", "layout", "samples"):
+    for k in ("flags", "metrics", "answers", "layout", "samples", "lookups", "marks"):
         d[k] = json.loads(d[k])
     return d
 
@@ -143,6 +181,7 @@ def all_sessions(with_metrics: bool = False) -> list[dict]:
 
 def delete_user(user_id: str) -> int:
     with connect() as c:
+        c.execute("DELETE FROM vocab WHERE user_id = ?", (user_id,))
         return c.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,)).rowcount
 
 
@@ -159,3 +198,79 @@ def set_levels(levels: dict) -> None:
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (json.dumps(levels),),
         )
+
+
+def set_marks(session_id: str, marks: list[int]) -> bool:
+    with connect() as c:
+        return c.execute("UPDATE sessions SET marks = ? WHERE id = ?", (json.dumps(marks), session_id)).rowcount > 0
+
+
+# ------------------------------------------------------------- articles ----
+
+
+def save_article(article: dict) -> None:
+    with connect() as c:
+        c.execute(
+            "INSERT INTO articles(id, data, imported_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(id) DO UPDATE SET data = excluded.data, imported_at = excluded.imported_at",
+            (article["id"], json.dumps(article, ensure_ascii=False), int(time.time() * 1000)),
+        )
+
+
+def stored_articles() -> list[dict]:
+    with connect() as c:
+        rows = c.execute("SELECT data, imported_at FROM articles ORDER BY imported_at DESC").fetchall()
+    return [{**json.loads(r["data"]), "imported_at": r["imported_at"]} for r in rows]
+
+
+def delete_article(article_id: str) -> bool:
+    with connect() as c:
+        return c.execute("DELETE FROM articles WHERE id = ?", (article_id,)).rowcount > 0
+
+
+# --------------------------------------------------------- translations ----
+
+
+def cache_get(key: str) -> dict | None:
+    with connect() as c:
+        r = c.execute("SELECT result FROM translations WHERE key = ?", (key,)).fetchone()
+    return json.loads(r["result"]) if r else None
+
+
+def cache_put(key: str, result: dict) -> None:
+    with connect() as c:
+        c.execute(
+            "INSERT OR REPLACE INTO translations(key, result, created_at) VALUES (?, ?, ?)",
+            (key, json.dumps(result, ensure_ascii=False), int(time.time() * 1000)),
+        )
+
+
+# ---------------------------------------------------------------- vocab ----
+
+
+def add_vocab(user_id: str, lang: str, g: dict, example: str, article_id: str) -> dict:
+    now = int(time.time() * 1000)
+    with connect() as c:
+        c.execute(
+            """
+            INSERT INTO vocab(user_id, lang, lemma, article, pos, translation, example, article_id, lookups, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
+            ON CONFLICT(user_id, lang, lemma) DO UPDATE SET
+                lookups = lookups + 1, updated_at = excluded.updated_at,
+                translation = excluded.translation, example = excluded.example, article_id = excluded.article_id
+            """,
+            (user_id, lang, g["lemma"], g.get("article", ""), g.get("pos", ""), g["translation"], example, article_id, now, now),
+        )
+        r = c.execute("SELECT * FROM vocab WHERE user_id = ? AND lang = ? AND lemma = ?", (user_id, lang, g["lemma"])).fetchone()
+    return dict(r)
+
+
+def list_vocab(user_id: str) -> list[dict]:
+    with connect() as c:
+        rows = c.execute("SELECT * FROM vocab WHERE user_id = ? ORDER BY updated_at DESC", (user_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def delete_vocab(user_id: str, vocab_id: int) -> bool:
+    with connect() as c:
+        return c.execute("DELETE FROM vocab WHERE id = ? AND user_id = ?", (vocab_id, user_id)).rowcount > 0

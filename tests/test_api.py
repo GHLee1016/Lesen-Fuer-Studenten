@@ -114,3 +114,101 @@ def test_admin_ws_auth(client):
         ws.send_json({"type": "auth", "token": "nope"})
         with pytest.raises(Exception):
             ws.receive_json()
+
+
+# ------------------------------------------------------------ phase 2 ----
+
+from backend import translate  # noqa: E402
+
+
+@pytest.fixture()
+def fake_translator(monkeypatch):
+    calls = []
+
+    def fake(word, lang):
+        calls.append(word)
+        return {"lemma": word.lower(), "article": "", "pos": "", "translation": f"<{word}>", "note": "", "source": "mymemory"}
+
+    monkeypatch.setattr(translate, "gloss_mymemory", fake)
+    monkeypatch.setattr(translate, "claude_available", lambda: False)
+    return calls
+
+
+def test_lookup_translates_caches_and_builds_vocab(client, fake_translator):
+    body = {"user_id": "kim", "article_id": "schwarze-katze", "word": "Katzen,", "sentence": "Schwarze Katzen.", "lang": "ko"}
+    r = client.post("/api/lookup", json=body).json()
+    assert r["word"] == "Katzen" and r["translation"] == "<Katzen>" and r["lookups"] == 1
+    r2 = client.post("/api/lookup", json=body).json()
+    assert r2["lookups"] == 2
+    assert fake_translator == ["Katzen"]  # second call served from cache
+    items = client.get("/api/vocab", params={"user_id": "kim"}).json()["items"]
+    assert len(items) == 1 and items[0]["lookups"] == 2
+    csv_text = client.get("/api/vocab.csv", params={"user_id": "kim"}).text
+    assert "katzen" in csv_text and "Schwarze Katzen." in csv_text
+    assert client.delete(f"/api/vocab/{items[0]['id']}", params={"user_id": "someone-else"}).status_code == 404
+    assert client.delete(f"/api/vocab/{items[0]['id']}", params={"user_id": "kim"}).status_code == 200
+    assert client.get("/api/vocab", params={"user_id": "kim"}).json()["items"] == []
+
+
+def test_lookup_rejects_unknown_language(client, fake_translator):
+    body = {"user_id": "kim", "article_id": "schwarze-katze", "word": "Katze", "lang": "xx"}
+    assert client.post("/api/lookup", json=body).status_code == 400
+
+
+def test_session_with_words_reports_difficulty_and_marks(client):
+    body = session_body(user="han")
+    # one sentence of 4 words under the gaze, line height 30
+    body["words"] = [[100 + k * 20, 35, 18, 20, 0] for k in range(4)]
+    body["lookups"] = [{"t": 1200, "i": 2, "word": "Katze"}]
+    r = client.post("/api/sessions", json=body).json()
+    assert "difficulty" in r["metrics"] and r["metrics"]["difficulty"]["word_hits"] > 0
+    sid = r["session_id"]
+    assert client.put(f"/api/sessions/{sid}/marks", json={"sentences": [0, 0]}).json() == {"ok": True}
+    full = client.get(f"/api/admin/sessions/{sid}", headers=AUTH).json()
+    assert full["marks"] == [0]
+    assert full["lookups"][0]["word"] == "Katze"
+    assert len(full["layout"]["words"]) == 4
+    assert client.put("/api/sessions/nope/marks", json={"sentences": []}).status_code == 404
+
+
+def test_multiple_answer_questions_need_the_exact_set(client, monkeypatch):
+    from backend import content
+
+    art = {
+        "id": "multi", "level": "B1", "title": "T", "paragraphs": ["Ein Satz."],
+        "quiz": [{"id": "q1", "question": "?", "options": ["a", "b", "c"], "answer": [0, 2]}],
+    }
+    from backend import db as dbm
+    dbm.save_article(art)
+    pub = client.get("/api/articles/multi").json()
+    assert pub["quiz"][0]["multiple"] is True and "answer" not in pub["quiz"][0]
+    _, fb = content.grade_quiz(content.get_article("multi"), {"q1": [2, 0]})
+    assert fb[0]["correct"]
+    _, fb = content.grade_quiz(content.get_article("multi"), {"q1": [0]})
+    assert not fb[0]["correct"]
+
+
+def test_article_without_quiz_uses_gaze_score_only(client):
+    from backend import db as dbm
+    dbm.save_article({"id": "noquiz", "level": "B2", "title": "T", "paragraphs": ["Text hier."], "quiz": []})
+    body = session_body(user="yoon")
+    body["article_id"] = "noquiz"
+    r = client.post("/api/sessions", json=body).json()
+    assert r["final_score"] == r["gaze_score"] and r["has_quiz"] is False
+
+
+def test_admin_import_list_delete(client, monkeypatch):
+    from backend import dw
+    from tests.test_dw import LESSON_URL, fake_fetch
+
+    monkeypatch.setattr(dw, "fetch", fake_fetch)
+    assert client.post("/api/admin/articles/import", json={"url": LESSON_URL}).status_code == 401
+    r = client.post("/api/admin/articles/import", json={"url": LESSON_URL}, headers=AUTH)
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == "dw-111" and r.json()["questions"] == 1
+    listed = [a["id"] for a in client.get("/api/articles").json()]
+    assert "dw-111" in listed and "schwarze-katze" in listed
+    bad = client.post("/api/admin/articles/import", json={"url": "https://example.com/x"}, headers=AUTH)
+    assert bad.status_code == 400
+    assert client.delete("/api/admin/articles/schwarze-katze", headers=AUTH).status_code == 404  # built-in
+    assert client.delete("/api/admin/articles/dw-111", headers=AUTH).status_code == 200

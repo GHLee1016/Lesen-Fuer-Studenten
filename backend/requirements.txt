@@ -1,2 +1,4 @@
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
+# optional: context-aware glosses when ANTHROPIC_API_KEY is set
+anthropic>=2,<3
