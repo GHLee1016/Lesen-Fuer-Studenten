@@ -2,11 +2,10 @@
  * the article's top-left corner, same as the recorded samples. */
 
 const STOPS = [
-  [0.0, [59, 91, 219]],
-  [0.3, [31, 181, 143]],
-  [0.55, [242, 193, 46]],
-  [0.8, [232, 89, 12]],
-  [1.0, [201, 42, 42]],
+  [0.0, [168, 206, 203]],
+  [0.35, [27, 102, 118]],
+  [0.7, [227, 167, 61]],
+  [1.0, [217, 84, 135]],
 ];
 
 let palette;
@@ -78,7 +77,7 @@ export function drawHeatmap(ctx, w, h, fixations, radius = 60) {
 }
 
 /** Scanpath: fixations as circles sized by duration, joined in order. */
-export function drawScanpath(ctx, fixations, color = "#2f54c9") {
+export function drawScanpath(ctx, fixations, color = "#1b6676") {
   if (!fixations.length) return;
   ctx.save();
   ctx.lineWidth = 1.5;

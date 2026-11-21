@@ -2,7 +2,12 @@ import { h, $, icon, toast, fmtDuration } from "./dom.js";
 
 const TOKEN_KEY = "lesen.adminToken";
 const LEVELS = ["high", "medium", "low"];
-const AOI_LABEL = (id) => (id === "title" ? "제목" : id === "lead" ? "리드" : `${id.slice(1)}문단`);
+const AOI_LABEL = (id) => (id === "title" ? "제목" : id === "lead" ? "도입부" : `${id.slice(1)}문단`);
+const LEVEL_META = {
+  high: { label: "기대 수준 이상", color: "var(--teal)" },
+  medium: { label: "기대 수준 근접", color: "var(--teal-light)", light: true },
+  low: { label: "지원 필요", color: "var(--pink)" },
+};
 const FLAG_TEXT = {
   high_calibration_error: "보정 오차가 커서 문단 판정이 부정확할 수 있어요.",
   low_sample_rate: "시선 데이터 수집 빈도가 낮았어요.",
@@ -127,8 +132,8 @@ function ago(ms) {
 
 const pct = (v) => `${Math.round(v * 100)}%`;
 const warnIcon = () => h("span", { class: "warn-icon", title: "데이터 품질 경고" }, icon("i-alert"));
-const initial = (id) => [...id][0]?.toUpperCase() || "?";
-const scoreColor = (v) => (v >= overview.levels.high ? "var(--green)" : v < overview.levels.low ? "#ef4444" : "#f59e0b");
+const sq = (color) => h("span", { class: "sq", style: { background: color } });
+let filter = "all";
 
 function render() {
   if (!overview) return;
@@ -136,42 +141,56 @@ function render() {
   $("#hi").value = levels.high;
   $("#lo").value = levels.low;
 
-  const all = LEVELS.flatMap((lv) => groups[lv]);
+  const all = LEVELS.flatMap((lv) => groups[lv].map((u) => ({ ...u, level: lv })));
   const avg = (f) => (all.length ? all.reduce((a, u) => a + f(u), 0) / all.length : 0);
   const flagged = all.filter((u) => u.flags.length).length;
   $("#kpis").replaceChildren(
-    kpi("i-users", "학생 수", all.length, "명"),
-    kpi("i-award", "평균 최종 점수", all.length ? Math.round(avg((u) => u.final_score)) : "–", all.length ? "점" : ""),
-    kpi("i-layers", "평균 문단 커버리지", all.length ? Math.round(avg((u) => u.reading_coverage) * 100) : "–", all.length ? "%" : ""),
-    kpi("i-alert", "품질 경고", flagged, "명", flagged > 0),
+    kpi("학생", all.length, "명"),
+    kpi("평균 최종 점수", all.length ? Math.round(avg((u) => u.final_score)) : "–"),
+    kpi("평균 문단 커버리지", all.length ? Math.round(avg((u) => u.reading_coverage) * 100) : "–", all.length ? "%" : ""),
+    kpi("데이터 품질 경고", flagged, "명", flagged > 0),
   );
 
-  for (const lv of LEVELS) {
-    const sec = document.querySelector(`.group[data-level="${lv}"]`);
-    sec.querySelector("[data-count]").textContent = `${groups[lv].length}명`;
-    const list = sec.querySelector(".list");
-    list.replaceChildren(
-      ...(groups[lv].length
-        ? groups[lv].map((u) =>
-            h("button", { class: "student", type: "button", dataset: { user: u.user_id }, onclick: () => openDrawer(u.user_id) },
-              h("span", { class: "avatar" }, initial(u.user_id)),
-              h("div", { class: "name" }, h("span", {}, u.user_id), u.flags.length ? warnIcon() : null),
-              h("div", { class: "score", style: { color: scoreColor(u.final_score) } }, u.final_score),
-              h("div", { class: "meta" },
-                h("div", { class: "bar" }, h("i", { style: { width: `${u.final_score}%`, background: scoreColor(u.final_score) } })),
-                h("span", {}, `시선 ${u.gaze_score} · 퀴즈 ${u.quiz_score} · ${ago(u.created_at)}`)),
-            ),
-          )
-        : [h("div", { class: "empty" }, "아직 이 그룹에 학생이 없어요")]),
-    );
-  }
+  // distribution
+  const n = all.length || 1;
+  $("#distBar").replaceChildren(
+    ...LEVELS.map((lv) => {
+      const share = (100 * groups[lv].length) / n;
+      return h("i", { class: LEVEL_META[lv].light ? "light" : "", style: { width: `${all.length ? share : 0}%`, background: LEVEL_META[lv].color }, title: LEVEL_META[lv].label },
+        share >= 8 ? `${Math.round(share)}%` : "");
+    }),
+  );
+  $("#distLegend").replaceChildren(
+    ...LEVELS.map((lv) => h("span", {}, sq(LEVEL_META[lv].color), LEVEL_META[lv].label, " ", h("b", {}, `${groups[lv].length}명`))),
+  );
+
+  // filters
+  const tabs = [["all", `전체 ${all.length}`], ...LEVELS.map((lv) => [lv, `${LEVEL_META[lv].label} ${groups[lv].length}`])];
+  $("#filters").replaceChildren(
+    ...tabs.map(([key, text]) => h("button", { type: "button", role: "tab", "aria-selected": String(filter === key), onclick: () => { filter = key; render(); } }, text)),
+  );
+
+  const rows = all.filter((u) => filter === "all" || u.level === filter).sort((a, b) => b.final_score - a.final_score);
+  $("#rows").replaceChildren(
+    ...(rows.length
+      ? rows.map((u) =>
+          h("tr", { dataset: { user: u.user_id }, tabindex: "0", onclick: () => openDrawer(u.user_id), onkeydown: (e) => e.key === "Enter" && openDrawer(u.user_id) },
+            h("td", {}, h("span", { class: "name" }, u.user_id, u.flags.length ? warnIcon() : null)),
+            h("td", {}, h("span", { class: "lvl" }, sq(LEVEL_META[u.level].color), LEVEL_META[u.level].label)),
+            h("td", { class: "r" }, h("span", { class: "final" }, u.final_score)),
+            h("td", { class: "r" }, u.gaze_score),
+            h("td", { class: "r" }, u.quiz_score),
+            h("td", { class: "r" }, `${u.wpm} WPM`),
+            h("td", { class: "r" }, u.session_count),
+            h("td", { class: "muted" }, ago(u.created_at)),
+          ),
+        )
+      : [h("tr", { class: "empty" }, h("td", { colspan: "8" }, all.length ? "이 수준에 해당하는 학생이 없어요." : "아직 제출된 결과가 없어요."))]),
+  );
 }
 
-function kpi(iconName, label, value, unit, alert = false) {
-  return h("div", { class: `kpi ${alert ? "alert" : ""}` },
-    h("span", { class: "tile" }, icon(iconName)),
-    h("div", {}, h("dt", {}, label), h("dd", {}, value, unit ? h("small", {}, unit) : null)),
-  );
+function kpi(label, value, unit, alert = false) {
+  return h("div", { class: `kpi ${alert ? "alert" : ""}` }, h("dd", {}, value, unit ? h("small", {}, unit) : null), h("dt", {}, label));
 }
 
 // ----------------------------------------------------------- levels ----
@@ -218,7 +237,7 @@ async function openDrawer(userId) {
   $("#scrim").hidden = false;
   $("#drawer").hidden = false;
   $("#drawer").replaceChildren(
-    h("div", { class: "drawer-head dark" }, h("span", { class: "avatar" }, initial(userId)), h("h2", {}, userId)),
+    h("div", { class: "drawer-head" }, h("h2", {}, userId)),
     h("div", { class: "drawer-body" }, h("p", { class: "muted" }, "불러오는 중…")),
   );
   await refreshDrawer();
@@ -248,16 +267,22 @@ function renderDrawer() {
   const sess = sessions[selected];
   const m = sess.metrics;
   const fmtDate = (ms) => new Date(ms).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const lv = sess.final_score >= overview.levels.high ? "high" : sess.final_score < overview.levels.low ? "low" : "medium";
 
   $("#drawer").replaceChildren(
-    h("div", { class: "drawer-head dark" },
-      h("span", { class: "avatar" }, initial(user_id)),
-      h("div", {}, h("h2", {}, user_id), h("p", {}, `세션 ${sessions.length}개 · 최근 ${fmtDate(sessions[0].created_at)}`)),
-      h("button", { class: "btn btn-sm btn-glass", type: "button", onclick: closeDrawer, "aria-label": "닫기" }, icon("i-x")),
+    h("div", { class: "drawer-head" },
+      h("div", {}, h("span", { class: "eyebrow" }, "Student report"), h("h2", {}, user_id)),
+      h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: closeDrawer, "aria-label": "닫기" }, icon("i-x")),
     ),
     h("div", { class: "drawer-body" },
+      h("div", { class: "facts" },
+        h("span", {}, sq(LEVEL_META[lv].color), h("b", {}, LEVEL_META[lv].label)),
+        h("span", {}, "속도 ", h("b", {}, `${m.wpm} WPM`)),
+        h("span", {}, "시간 ", h("b", {}, fmtDuration(m.duration_ms))),
+        h("span", {}, sess.mode === "mouse" ? "마우스 데모" : ["보정 오차 ", h("b", {}, sess.calib_error_px != null ? `${Math.round(sess.calib_error_px)}px` : "–")]),
+      ),
       h("section", {},
-        h("h3", {}, "세션 기록"),
+        h("h3", {}, `세션 ${sessions.length}개`),
         h("div", { class: "sessions", role: "tablist" },
           sessions.map((s, i) =>
             h("button", { class: "session-tab", type: "button", role: "tab", "aria-selected": String(i === selected), onclick: () => { selected = i; renderDrawer(); } },
@@ -269,8 +294,8 @@ function renderDrawer() {
       h("section", {},
         h("dl", { class: "scoreline" },
           h("div", {}, h("dt", {}, "최종 점수"), h("dd", {}, sess.final_score)),
-          h("div", {}, h("dt", {}, "시선 ×0.6"), h("dd", {}, sess.gaze_score)),
-          h("div", {}, h("dt", {}, "퀴즈 ×0.4"), h("dd", {}, sess.quiz_score)),
+          h("div", {}, h("dt", {}, "시선 × 0.6"), h("dd", {}, sess.gaze_score)),
+          h("div", {}, h("dt", {}, "퀴즈 × 0.4"), h("dd", {}, sess.quiz_score)),
         ),
       ),
       sess.flags.length || sess.mode === "mouse"
@@ -281,9 +306,9 @@ function renderDrawer() {
         : null,
       h("section", {},
         h("h3", {}, "문단별 읽음 정도"),
-        h("div", { class: "panel para-bars" },
+        h("div", { class: "para-bars" },
           m.paragraphs.map((p) => {
-            const color = p.coverage >= 0.75 ? "var(--green)" : p.coverage >= 0.25 ? "#f59e0b" : "#ef4444";
+            const color = p.coverage >= 0.75 ? "var(--teal)" : p.coverage >= 0.25 ? "var(--teal-light)" : "var(--pink)";
             return h("div", { class: "para" },
               h("span", {}, AOI_LABEL(p.id)),
               h("div", { class: "bar" }, h("i", { style: { width: `${Math.max(2, p.coverage * 100)}%`, background: color } })),
@@ -294,14 +319,12 @@ function renderDrawer() {
       ),
       h("section", {},
         h("h3", {}, "읽기 지표"),
-        h("dl", { class: "panel mini-metrics" },
-          mm("읽기 시간", fmtDuration(m.duration_ms)),
-          mm("읽기 속도", `${m.wpm} WPM`),
+        h("dl", { class: "mini-metrics" },
           mm("문단 커버리지", pct(m.reading_coverage)),
           mm("본문 응시 비율", pct(m.on_text_ratio)),
           mm("고정 횟수", `${m.fixations}회 · ${m.mean_fixation_ms}ms`),
           mm("되돌아 읽기", `${m.regressions_within_line + m.regressions_between_paragraphs}회 · ${pct(m.regression_rate)}`),
-          mm("보정 오차", sess.calib_error_px != null ? `${Math.round(sess.calib_error_px)}px` : "–"),
+          mm("건너뛴 문단", `${m.skipped_paragraphs.filter((id) => id !== "title").length}개`),
           mm("수집 빈도", `${m.sample_rate_hz} Hz`),
         ),
       ),
