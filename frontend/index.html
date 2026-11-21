@@ -9,9 +9,10 @@
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Literata:opsz,wght@7..72,300;7..72,400;7..72,500;7..72,600&family=Noto+Serif+KR:wght@300;400;500&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/reader.css" />
   <link rel="stylesheet" href="/static/css/student.css" />
 </head>
 <body data-state="start">
@@ -59,10 +60,15 @@
           </div>
 
           <form class="start-form card" id="startForm" novalidate>
+            <div class="field">
+              <label for="articleSelect">지문</label>
+              <select class="input" id="articleSelect" disabled><option>불러오는 중…</option></select>
+            </div>
             <div class="article-pick">
               <span class="eyebrow">오늘의 지문</span>
-              <h3 id="articleTitle">기사 불러오는 중…</h3>
+              <h3 id="articleTitle" lang="de">기사 불러오는 중…</h3>
               <p id="articleMeta"></p>
+              <a id="articleSource" class="source" target="_blank" rel="noopener" hidden></a>
               <span class="chip accent" id="articleLevel">B1</span>
             </div>
             <div class="field">
@@ -70,6 +76,11 @@
               <input class="input" id="userId" name="userId" autocomplete="off" maxlength="40" placeholder="예: 20231234" required />
               <span class="hint">한글, 영문, 숫자, 점(.), 밑줄(_), 하이픈(-)만 쓸 수 있어요.</span>
               <span class="error-text" id="userIdError" hidden></span>
+            </div>
+            <div class="field">
+              <label for="langSelect">뜻풀이 언어 (모국어)</label>
+              <select class="input" id="langSelect"></select>
+              <span class="hint">읽는 중 단어를 누르면 이 언어로 뜻이 단어 아래에 달리고, 단어장에 모여요.</span>
             </div>
             <fieldset class="mode-group">
               <legend>측정 방식</legend>
@@ -220,7 +231,9 @@
         <span class="rec"><span class="dot live"></span>시선 기록 중</span>
         <span class="timer" id="timer">00:00</span>
         <label class="toggle"><input type="checkbox" id="showGaze" /> 시선 위치 표시</label>
+        <span class="hint read-hint">단어를 누르면 뜻이 나와요</span>
         <div class="spacer"></div>
+        <button class="btn btn-sm btn-soft" id="vocabBtn" type="button">단어장 <b id="vocabCount">0</b></button>
         <button class="btn btn-primary" id="doneReading" type="button">다 읽었어요</button>
       </div>
       <div class="section-head" data-view="results">
@@ -232,12 +245,13 @@
           <label class="toggle"><input type="checkbox" id="layerHeat" checked /> 히트맵</label>
           <label class="toggle"><input type="checkbox" id="layerPath" /> 시선 경로</label>
           <label class="toggle"><input type="checkbox" id="layerAoi" checked /> 문단별 읽음</label>
+          <label class="toggle"><input type="checkbox" id="layerHard" checked /> 어려웠던 구간</label>
           <span class="legend">적음 <span class="ramp"></span> 많음</span>
         </div>
       </div>
       <div class="paper">
         <div class="paper-head">
-          <span id="frameTitle">지문</span>
+          <span id="frameTitle" lang="de">지문</span>
           <span id="frameMeta"></span>
         </div>
         <div class="article-wrap">
@@ -265,6 +279,7 @@
       </div>
     </form>
 
+    <section class="app-view session-vocab" data-view="results" id="sessionVocab"></section>
     <section class="app-view review" data-view="results" id="review"></section>
     <div class="restart" data-view="results">
       <button class="btn btn-lg" id="restart" type="button">처음으로</button>
@@ -278,6 +293,16 @@
   </div>
 
   <div class="gaze-dot" id="gazeDot" hidden></div>
+
+  <dialog class="vocab-dialog" id="vocabDialog" aria-labelledby="vocabTitle">
+    <div class="vocab-head">
+      <div><span class="eyebrow">Wortschatz</span><h2 id="vocabTitle">내 단어장</h2></div>
+      <a class="btn btn-sm btn-soft" id="vocabCsv" download="vocabulary.csv">CSV 내려받기</a>
+      <button class="btn btn-sm btn-ghost" id="vocabClose" type="button" aria-label="닫기">닫기</button>
+    </div>
+    <p class="hint">찾아본 단어가 모두 모여요. CSV는 Anki 같은 플래시카드 앱으로 가져올 수 있어요.</p>
+    <div id="vocabList" class="vocab-list"></div>
+  </dialog>
 
   <script type="module" src="/static/js/student.js"></script>
 </body>
