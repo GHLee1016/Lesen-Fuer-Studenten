@@ -42,3 +42,10 @@ export function fmtDuration(ms) {
   const s = Math.round(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/** <svg><use href="#name"/></svg> referencing a symbol defined in the page. */
+export function icon(name) {
+  const svg = s("svg", { fill: "none", stroke: "currentColor", "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" });
+  svg.append(s("use", { href: `#${name}` }));
+  return svg;
+}

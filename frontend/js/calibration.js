@@ -1,5 +1,5 @@
 import { fitAffine, applyAffine, median } from "./affine.js";
-import { h, sleep } from "./dom.js";
+import { h, icon, sleep } from "./dom.js";
 
 // Normalised viewport positions.
 const GRID = [0.1, 0.5, 0.9].flatMap((y) => [0.06, 0.5, 0.94].map((x) => [x, y]));
@@ -54,9 +54,11 @@ export class Calibration {
   _intro() {
     this.tracker.showPreview(true);
     this._setStatus("");
-    const startBtn = h("button", { class: "btn btn-primary btn-lg", type: "button", disabled: true }, "얼굴 인식 중…");
+    const startBtn = h("button", { class: "btn btn-primary btn-pill", type: "button", disabled: true }, "얼굴 인식 중…");
     this._setPanel(
-      h("h2", {}, "시선 보정"),
+      h("span", { class: "tile solid" }, icon("i-target")),
+      h("span", { class: "eyebrow" }, "Calibration"),
+      h("h2", {}, "시선 보정을 시작할게요"),
       h("p", {}, "오른쪽 아래 카메라 화면에서 얼굴이 초록색 상자 안에 들어오게 해 주세요."),
       h("p", {}, `점이 9개 차례로 나타나요. 점을 바라보면서 ${CLICKS_PER_POINT}번씩 클릭하고, 이어서 클릭 없이 점만 바라보면 돼요.`),
       h("div", { class: "actions" }, startBtn),
@@ -171,6 +173,7 @@ export class Calibration {
   _failed() {
     this.tracker.showPreview(true);
     this._setPanel(
+      h("span", { class: "tile" }, icon("i-scan")),
       h("h2", {}, "시선을 충분히 읽지 못했어요"),
       h("p", {}, "카메라에 얼굴이 잘 보이는지, 조명이 너무 어둡지 않은지 확인해 주세요."),
       h("div", { class: "actions" }, h("button", { class: "btn btn-primary", type: "button", onclick: () => this._intro() }, "다시 보정")),
@@ -180,10 +183,11 @@ export class Calibration {
   _result(res) {
     const q = qualityOf(res.errorPx);
     this.tracker.showPreview(true);
-    const accept = h("button", { class: "btn btn-primary", type: "button" }, "읽기 시작");
-    const retry = h("button", { class: "btn", type: "button" }, "다시 보정");
+    const accept = h("button", { class: "btn btn-primary btn-pill", type: "button" }, "읽기 시작");
+    const retry = h("button", { class: "btn btn-pill", type: "button" }, "다시 보정");
     this._setPanel(
-      h("h2", {}, "보정 완료"),
+      h("span", { class: `tile ${q.cls === "good" ? "solid" : ""}` }, icon("i-check")),
+      h("h2", {}, "보정이 끝났어요"),
       h("dl", { class: "quality" },
         h("div", {}, h("dt", {}, "평균 오차"), h("dd", { class: "num" }, `${res.errorPx}px`)),
         h("div", {}, h("dt", {}, "판정"), h("dd", {}, h("span", { class: `chip ${q.cls}` }, q.label))),

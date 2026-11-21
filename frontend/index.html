@@ -4,7 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Lesen für Studenten</title>
-  <meta name="description" content="웹캠 시선 추적으로 독일어 읽기 과정을 분석합니다." />
+  <meta name="description" content="웹캠 시선 추적으로 독일어 읽기 과정을 진단합니다." />
+  <meta name="theme-color" content="#06160c" />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,8 +15,28 @@
   <link rel="stylesheet" href="/static/css/student.css" />
 </head>
 <body data-state="start">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="m12 2 10 5-10 5L2 7z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></symbol>
+      <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 4h6a4 4 0 0 1 4 4v12a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v12a3 3 0 0 1 3-3h7z"/></symbol>
+      <symbol id="i-check-list" viewBox="0 0 24 24"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-8"/></symbol>
+      <symbol id="i-rewind" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></symbol>
+      <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+      <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+      <symbol id="i-scan" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/></symbol>
+    </defs>
+  </svg>
+
   <header class="topbar">
-    <div class="brand"><span class="brand-mark">L</span>Lesen für Studenten</div>
+    <a class="brand" href="/"><span class="brand-mark"><svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-eye"/></svg></span>Lesen für Studenten</a>
     <ol class="steps" id="steps" aria-label="진행 단계">
       <li data-step="start"><b>1</b><span>시작</span></li>
       <li data-step="calibrate"><b>2</b><span>시선 보정</span></li>
@@ -24,111 +45,202 @@
       <li data-step="results"><b>5</b><span>결과</span></li>
     </ol>
     <span class="chip" id="modeChip" hidden></span>
+    <a class="btn btn-sm btn-glass top-admin" href="/admin">교사용 대시보드</a>
   </header>
 
   <main>
-    <!-- 1. Start -->
-    <section class="start" data-view="start">
-      <div class="start-intro">
-        <div class="eyebrow">Webcam Eye-Tracking · Deutsch B1</div>
-        <h1>읽는 과정을<br />눈으로 기록해요</h1>
-        <p>독일어 기사를 읽는 동안 시선이 어느 문단에 얼마나 머물렀는지, 되돌아가 다시 읽은 곳은 어디인지 분석해 점수와 함께 보여줘요.</p>
-        <ul class="feature-list">
-          <li>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            <div><strong>영상은 이 브라우저 밖으로 나가지 않아요</strong>시선 추정은 기기 안에서만 이뤄지고, 서버에는 시선 좌표만 전송돼요.</div>
-          </li>
-          <li>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
-            <div><strong>정확도를 직접 확인해요</strong>보정이 끝나면 실제 오차를 측정해 보여주고, 부정확하면 다시 보정할 수 있어요.</div>
-          </li>
-          <li>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>
-            <div><strong>문단 단위 읽기 분석</strong>문단별 체류 시간, 읽기 속도, 되돌아 읽기를 히트맵과 시선 경로로 보여줘요.</div>
-          </li>
-        </ul>
-      </div>
+    <!-- ============ 1. Start (landing) ============ -->
+    <div class="landing" data-view="start">
+      <section class="hero dark">
+        <div class="wrap hero-inner">
+          <div class="hero-copy">
+            <span class="badge"><svg fill="none" stroke="currentColor" stroke-width="2"><use href="#i-spark"/></svg>웹캠 시선 추적 · Deutsch B1</span>
+            <h1>독일어 읽기를<br /><span class="hl">시선 데이터</span>로<br />진단해요</h1>
+            <p>기사를 읽는 동안 시선이 어느 문단에 얼마나 머물렀는지, 어디를 건너뛰고 어디로 되돌아갔는지 기록해 퀴즈와 함께 점수로 보여줘요.</p>
+            <ul class="hero-points">
+              <li><span class="tile"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-lock"/></svg></span><div><strong>영상은 기기 밖으로 나가지 않아요</strong><span>시선 추정은 브라우저 안에서만 이뤄져요</span></div></li>
+              <li><span class="tile"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-target"/></svg></span><div><strong>정확도를 숫자로 확인해요</strong><span>보정이 끝나면 실제 오차(px)를 측정해요</span></div></li>
+            </ul>
+          </div>
 
-      <form class="card start-form" id="startForm" novalidate>
-        <div class="article-pick" id="articlePick">
-          <span class="lv" id="articleLevel">B1</span>
-          <div>
-            <h3 id="articleTitle">기사 불러오는 중…</h3>
-            <p id="articleMeta"></p>
+          <form class="card start-form" id="startForm" novalidate>
+            <div class="form-head">
+              <span class="eyebrow">측정 시작</span>
+              <h2>오늘의 지문</h2>
+            </div>
+            <div class="article-pick">
+              <span class="tile solid"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-book"/></svg></span>
+              <div>
+                <h3 id="articleTitle">기사 불러오는 중…</h3>
+                <p id="articleMeta"></p>
+              </div>
+              <span class="chip accent" id="articleLevel">B1</span>
+            </div>
+            <div class="field">
+              <label for="userId">이름 또는 학번</label>
+              <input class="input" id="userId" name="userId" autocomplete="off" maxlength="40" placeholder="예: 20231234" required />
+              <span class="hint">한글, 영문, 숫자, 점(.), 밑줄(_), 하이픈(-)만 쓸 수 있어요.</span>
+              <span class="error-text" id="userIdError" hidden></span>
+            </div>
+            <fieldset class="mode-group">
+              <legend>측정 방식</legend>
+              <label class="mode">
+                <input type="radio" name="mode" value="webcam" checked />
+                <span class="mode-icon"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-eye"/></svg></span>
+                <strong>웹캠 시선 추적</strong>
+                <span>실제 측정 · 보정 약 1분</span>
+              </label>
+              <label class="mode">
+                <input type="radio" name="mode" value="mouse" />
+                <span class="mode-icon"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-scan"/></svg></span>
+                <strong>마우스 데모</strong>
+                <span>카메라 없이 체험</span>
+              </label>
+            </fieldset>
+            <ul class="tips" id="webcamTips">
+              <li><svg fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>밝은 곳에서 화면과 50–70cm 떨어져 앉아 주세요</li>
+              <li><svg fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>끝날 때까지 머리를 크게 움직이지 말아 주세요</li>
+              <li><svg fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check"/></svg>시작 전에 브라우저 창을 최대화해 주세요</li>
+            </ul>
+            <span class="error-text" id="startError" hidden></span>
+            <button class="btn btn-primary btn-pill" id="startBtn" type="submit" disabled>시작하기<svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-arrow"/></svg></button>
+          </form>
+        </div>
+      </section>
+
+      <section class="section soft">
+        <div class="wrap">
+          <div class="section-title center">
+            <span class="eyebrow">01 — How it works</span>
+            <h2>네 단계로 끝나는 <span class="hl-dark">읽기 진단</span></h2>
+            <p>보정부터 리포트까지 10분이면 충분해요.</p>
+          </div>
+          <ol class="stepper" aria-hidden="true">
+            <li><b>1</b><span>시선 보정</span></li>
+            <li><b>2</b><span>지문 읽기</span></li>
+            <li><b>3</b><span>내용 퀴즈</span></li>
+            <li><b>4</b><span>읽기 리포트</span></li>
+          </ol>
+          <div class="how-grid">
+            <article class="how-card"><span class="tile solid"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-target"/></svg></span><i>1</i><h3>시선 보정</h3><p>점을 바라보며 클릭해 모델을 학습시키고, 따로 남겨둔 점으로 정확도를 검증해요.</p></article>
+            <article class="how-card"><span class="tile solid"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-book"/></svg></span><i>2</i><h3>지문 읽기</h3><p>평소처럼 읽기만 하면 돼요. 시선 좌표가 초당 약 30번 기록돼요.</p></article>
+            <article class="how-card"><span class="tile solid"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-check-list"/></svg></span><i>3</i><h3>내용 퀴즈</h3><p>지문을 다시 보지 않고 다섯 문항에 답해요. 채점은 서버에서 해요.</p></article>
+            <article class="how-card"><span class="tile solid"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chart"/></svg></span><i>4</i><h3>읽기 리포트</h3><p>문단별 체류 시간과 히트맵, 시선 경로를 지문 위에 겹쳐 보여줘요.</p></article>
           </div>
         </div>
-        <div class="field">
-          <label for="userId">이름 또는 학번</label>
-          <input class="input" id="userId" name="userId" autocomplete="off" maxlength="40" placeholder="예: 20231234" required />
-          <span class="hint">한글, 영문, 숫자, 점(.), 밑줄(_), 하이픈(-)만 쓸 수 있어요.</span>
-          <span class="error-text" id="userIdError" hidden></span>
+      </section>
+
+      <section class="section">
+        <div class="wrap split">
+          <div>
+            <span class="eyebrow">02 — What we measure</span>
+            <h2 class="split-title">점수 하나가 아니라<br /><span class="hl-dark">읽는 과정</span>을 봐요</h2>
+            <p class="lede">웹캠 시선 추적의 오차는 보통 100–200px이라, 단어보다는 문단 단위로 읽기 행동을 분석해요.</p>
+            <ul class="feature-rows">
+              <li><span class="tile"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-layers"/></svg></span><div><strong>문단별 체류 시간</strong><span>문단 길이에 맞는 시간만큼 머물렀는지 확인해요</span></div></li>
+              <li><span class="tile"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-gauge"/></svg></span><div><strong>읽기 속도</strong><span>분당 단어 수(WPM)로 읽는 속도를 측정해요</span></div></li>
+              <li><span class="tile"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-rewind"/></svg></span><div><strong>되돌아 읽기</strong><span>앞 문장이나 이전 문단으로 돌아간 횟수를 세요</span></div></li>
+              <li><span class="tile"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-shield"/></svg></span><div><strong>데이터 품질 점검</strong><span>보정 오차가 크거나 시선이 본문 밖이면 알려줘요</span></div></li>
+            </ul>
+          </div>
+          <div class="report-mock card" aria-label="리포트 예시">
+            <span class="mock-float"><small>평균 보정 오차</small><b>86px</b></span>
+            <div class="mock-head"><div><strong>읽기 리포트</strong><span>예시 · Achtung, schwarze Katze!?</span></div><span class="chip">예시</span></div>
+            <div class="mock-bars">
+              <div><span>문단 커버리지</span><div class="bar"><i style="width:78%;background:var(--green)"></i></div></div>
+              <div><span>본문 응시 비율</span><div class="bar"><i style="width:91%;background:var(--cyan)"></i></div></div>
+              <div><span>퀴즈 정답률</span><div class="bar"><i style="width:80%;background:var(--violet)"></i></div></div>
+              <div><span>읽기 속도 (142 WPM)</span><div class="bar"><i style="width:62%;background:var(--orange)"></i></div></div>
+            </div>
+            <div class="mock-note"><span class="tile"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-chart"/></svg></span><div><strong>분석 결과</strong><span>4문단을 건너뛰었어요. 2문단에서 되돌아 읽기가 많았어요.</span></div></div>
+            <div class="mock-foot"><span>최종 점수</span><b>79<small>점</small></b></div>
+          </div>
         </div>
-        <fieldset class="mode-group">
-          <legend>측정 방식</legend>
-          <label class="mode">
-            <input type="radio" name="mode" value="webcam" checked />
-            <strong>웹캠 시선 추적</strong>
-            <span>실제 측정 · 보정 약 1분</span>
-          </label>
-          <label class="mode">
-            <input type="radio" name="mode" value="mouse" />
-            <strong>마우스 데모</strong>
-            <span>카메라 없이 체험 · 마우스가 시선 역할</span>
-          </label>
-        </fieldset>
-        <ul class="tips" id="webcamTips">
-          <li>얼굴이 밝게 보이는 곳에서, 화면과 50–70cm 떨어져 앉아 주세요.</li>
-          <li>보정부터 읽기가 끝날 때까지 머리를 크게 움직이지 말아 주세요.</li>
-          <li>창 크기를 바꾸면 위치가 틀어지니, 시작 전에 창을 최대화해 주세요.</li>
-        </ul>
-        <span class="error-text" id="startError" hidden></span>
-        <button class="btn btn-primary btn-lg" id="startBtn" type="submit" disabled>시작하기</button>
-      </form>
-    </section>
+      </section>
 
-    <!-- 3 & 5. Reader (also used to show the analysis on the results page) -->
-    <section class="results" data-view="results" id="resultsTop"></section>
+      <section class="section dark cta">
+        <div class="wrap center">
+          <h2>카메라만 있으면<br /><span class="hl">지금 바로</span> 시작할 수 있어요</h2>
+          <p>설치 없이 브라우저에서 동작해요. 카메라가 없다면 마우스 데모로 체험해 보세요.</p>
+          <div class="cta-actions">
+            <button class="btn btn-primary btn-pill" type="button" id="ctaStart">측정 시작하기</button>
+            <a class="btn btn-glass btn-pill" href="/admin">교사용 대시보드</a>
+          </div>
+        </div>
+      </section>
 
-    <div class="reader" data-view="read results">
+      <footer class="footer">
+        <div class="wrap">
+          <a class="brand" href="/"><span class="brand-mark"><svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-eye"/></svg></span>Lesen für Studenten</a>
+          <span>웹캠 시선 추적 기반 독일어 읽기 분석 · WebGazer.js, FastAPI</span>
+          <a href="https://github.com/GHLee1016/Lesen-Fuer-Studenten" rel="noopener">GitHub</a>
+        </div>
+      </footer>
+    </div>
+
+    <!-- ============ 5. Results summary ============ -->
+    <section class="app-view results" data-view="results" id="resultsTop"></section>
+
+    <!-- ============ 3 & 5. Reader ============ -->
+    <div class="app-view reader" data-view="read results">
       <div class="reader-bar" data-view="read">
+        <span class="chip good"><span class="dot live"></span>시선 기록 중</span>
         <span class="timer" id="timer">00:00</span>
         <label class="toggle"><input type="checkbox" id="showGaze" /> 시선 위치 표시</label>
         <div class="spacer"></div>
-        <button class="btn btn-primary" id="doneReading" type="button">다 읽었어요</button>
+        <button class="btn btn-primary" id="doneReading" type="button">다 읽었어요<svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-arrow"/></svg></button>
       </div>
       <div class="section-head" data-view="results">
-        <h2>읽기 분석</h2>
-        <label class="toggle"><input type="checkbox" id="layerHeat" checked /> 히트맵</label>
-        <label class="toggle"><input type="checkbox" id="layerPath" /> 시선 경로</label>
-        <label class="toggle"><input type="checkbox" id="layerAoi" checked /> 문단별 읽음</label>
-        <span class="legend">적음 <span class="ramp"></span> 많음</span>
+        <div>
+          <span class="eyebrow">Reading map</span>
+          <h2>지문 위에서 보는 읽기 분석</h2>
+        </div>
+        <div class="layer-toggles">
+          <label class="toggle"><input type="checkbox" id="layerHeat" checked /> 히트맵</label>
+          <label class="toggle"><input type="checkbox" id="layerPath" /> 시선 경로</label>
+          <label class="toggle"><input type="checkbox" id="layerAoi" checked /> 문단별 읽음</label>
+          <span class="legend">적음 <span class="ramp"></span> 많음</span>
+        </div>
       </div>
-      <div class="article-wrap">
-        <article class="article" id="article" lang="de"></article>
-        <canvas class="overlay" id="overlay"></canvas>
+      <div class="frame">
+        <div class="frame-head">
+          <span class="frame-dots"><i></i><i></i><i></i></span>
+          <span class="frame-title" id="frameTitle">지문</span>
+          <span class="frame-meta" id="frameMeta"></span>
+        </div>
+        <div class="article-wrap">
+          <article class="article" id="article" lang="de"></article>
+          <canvas class="overlay" id="overlay"></canvas>
+        </div>
+        <div class="frame-foot" data-view="read">
+          <span>읽은 위치</span>
+          <div class="bar"><i id="progressBar" style="width:0%"></i></div>
+          <span class="num" id="progressText">0%</span>
+        </div>
       </div>
     </div>
 
-    <!-- 4. Quiz -->
-    <form class="quiz" data-view="quiz" id="quizForm">
-      <div class="quiz-head">
-        <h2>내용 확인 퀴즈</h2>
-        <p>기사를 다시 보지 않고 답해 주세요. 시선 점수 60%, 퀴즈 40%로 최종 점수를 계산해요.</p>
+    <!-- ============ 4. Quiz ============ -->
+    <form class="app-view quiz" data-view="quiz" id="quizForm">
+      <div class="section-title">
+        <span class="eyebrow">Comprehension check</span>
+        <h2>지문 내용, <span class="hl-dark">얼마나 기억나요?</span></h2>
+        <p>지문을 다시 보지 않고 답해 주세요. 시선 점수 60%, 퀴즈 40%로 최종 점수를 계산해요.</p>
       </div>
-      <div id="quizList" class="quiz"></div>
+      <div id="quizList" class="quiz-list"></div>
       <div class="quiz-actions">
         <span class="hint" id="quizHint"></span>
-        <button class="btn btn-primary btn-lg" type="submit" id="submitQuiz">제출하고 결과 보기</button>
+        <button class="btn btn-primary btn-pill" type="submit" id="submitQuiz">제출하고 결과 보기</button>
       </div>
     </form>
 
-    <section class="review" data-view="results" id="review"></section>
+    <section class="app-view review" data-view="results" id="review"></section>
     <div class="restart" data-view="results">
-      <button class="btn btn-lg" id="restart" type="button">처음으로</button>
+      <button class="btn btn-pill" id="restart" type="button">처음으로</button>
     </div>
   </main>
 
-  <!-- 2. Calibration overlay -->
+  <!-- ============ 2. Calibration overlay ============ -->
   <div class="calib" id="calib" hidden>
     <div class="calib-status" id="calibStatus" hidden></div>
     <div class="card calib-panel" id="calibPanel"></div>
