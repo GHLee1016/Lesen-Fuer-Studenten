@@ -1,4 +1,6 @@
 import { h, $, icon, toast, fmtDuration } from "./dom.js";
+import { openReplay } from "./replay.js";
+import { renderArticle } from "./article.js";
 
 const TOKEN_KEY = "lesen.adminToken";
 const LEVELS = ["high", "medium", "low"];
@@ -55,6 +57,7 @@ async function login(t) {
   $("#dashView").hidden = false;
   render();
   connectWs();
+  loadArticles();
 }
 
 function logout(msg) {
@@ -193,6 +196,65 @@ function kpi(label, value, unit, alert = false) {
   return h("div", { class: `kpi ${alert ? "alert" : ""}` }, h("dd", {}, value, unit ? h("small", {}, unit) : null), h("dt", {}, label));
 }
 
+// --------------------------------------------------------- articles ----
+
+async function loadArticles() {
+  try {
+    const list = await (await api("/api/admin/articles")).json();
+    $("#articleRows").replaceChildren(
+      ...list.map((a) =>
+        h("tr", {},
+          h("td", {}, h("span", { class: "de", lang: "de" }, a.title)),
+          h("td", {}, h("span", { class: "chip accent" }, a.level)),
+          h("td", { class: "r" }, a.words),
+          h("td", { class: "r" }, a.questions || "–"),
+          h("td", {}, a.source ? h("a", { class: "src", href: a.source.url, target: "_blank", rel: "noopener" }, `${a.source.name} ↗`) : h("span", { class: "muted" }, "기본 지문")),
+          h("td", { class: "r" }, a.builtin ? null : h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => deleteArticle(a) }, "삭제")),
+        ),
+      ),
+    );
+  } catch (err) {
+    if (err.message !== "unauthorized") toast("지문 목록을 불러오지 못했어요.");
+  }
+}
+
+async function deleteArticle(a) {
+  if (!confirm(`'${a.title}' 지문을 삭제할까요? 이 지문으로 측정한 세션은 남지만 재생할 수 없게 돼요.`)) return;
+  try {
+    await api(`/api/admin/articles/${encodeURIComponent(a.id)}`, { method: "DELETE" });
+    loadArticles();
+  } catch (err) {
+    if (err.message !== "unauthorized") toast("삭제하지 못했어요.");
+  }
+}
+
+$("#importForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const btn = $("#importBtn");
+  const errEl = $("#importError");
+  errEl.hidden = true;
+  btn.disabled = true;
+  btn.textContent = "가져오는 중…";
+  try {
+    const res = await fetch("/api/admin/articles/import", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ url: $("#importUrl").value.trim() }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : `HTTP ${res.status}`);
+    $("#importUrl").value = "";
+    toast(`'${body.title}' (${body.level}) 지문을 가져왔어요.`);
+    loadArticles();
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "가져오기";
+  }
+});
+
 // ----------------------------------------------------------- levels ----
 
 $("#levelsForm").addEventListener("submit", async (e) => {
@@ -305,6 +367,11 @@ function renderDrawer() {
           )
         : null,
       h("section", {},
+        h("button", { class: "btn btn-primary", id: "replayBtn", type: "button", onclick: () => startReplay(sess) }, "시선 재생"),
+        h("span", { class: "hint", style: { marginLeft: "10px" } }, "학생이 읽은 순서대로 시선을 다시 봐요."),
+      ),
+      hardSummary(sess),
+      h("section", {},
         h("h3", {}, "문단별 읽음 정도"),
         h("div", { class: "para-bars" },
           m.paragraphs.map((p) => {
@@ -328,12 +395,70 @@ function renderDrawer() {
           mm("수집 빈도", `${m.sample_rate_hz} Hz`),
         ),
       ),
+      h("section", {},
+        h("h3", {}, `단어장 · ${drawerData.vocab.length}개`),
+        drawerData.vocab.length
+          ? h("div", { class: "chips" },
+              drawerData.vocab.slice(0, 40).map((v) =>
+                h("span", { class: "vchip", title: v.example }, h("b", { lang: "de" }, `${v.article ? `${v.article} ` : ""}${v.lemma}`), v.translation, v.lookups > 1 ? h("small", {}, `×${v.lookups}`) : null)))
+          : h("p", { class: "muted", style: { margin: 0 } }, "아직 찾아본 단어가 없어요."),
+        drawerData.vocab.length ? h("button", { class: "btn btn-sm btn-soft", type: "button", style: { marginTop: "10px" }, onclick: () => download(`/api/admin/vocab/${encodeURIComponent(user_id)}.csv`, `vocab-${user_id}.csv`) }, "단어장 CSV") : null,
+      ),
       h("div", { class: "danger-zone" },
         h("span", { class: "hint" }, "이 학생의 모든 세션과 시선 데이터를 삭제해요."),
         h("button", { class: "btn btn-sm btn-danger", type: "button", onclick: () => deleteUser(user_id) }, "학생 데이터 삭제"),
       ),
     ),
   );
+}
+
+const REASON = { slow: "오래 머묾", reread: "다시 돌아옴" };
+const sentenceCache = new Map();
+
+function hardSummary(sess) {
+  const d = sess.metrics.difficulty;
+  if (!d) return null;
+  const marks = sess.marks || [];
+  const section = h("section", {},
+    h("h3", {}, "어려웠던 구간"),
+    h("dl", { class: "hard-sum", style: { margin: 0 } },
+      h("div", {}, h("dt", {}, "자동 감지"), h("dd", {}, `${d.difficult_sentences.length}문장`)),
+      h("div", {}, h("dt", {}, "학생 표시"), h("dd", {}, `${marks.length}문장`)),
+      h("div", {}, h("dt", {}, "감점"), h("dd", {}, `−${d.penalty}`)),
+    ),
+  );
+  const ids = [...new Set([...d.difficult_sentences, ...marks])].sort((a, b) => a - b);
+  if (ids.length) {
+    const list = h("ul", { class: "hard-sents" });
+    section.append(list);
+    sentencesOf(sess.article_id).then((sents) => {
+      const stats = new Map(d.sentences.map((x) => [x.s, x]));
+      list.replaceChildren(...ids.slice(0, 8).map((i) => {
+        const x = stats.get(i);
+        const tags = [d.difficult_sentences.includes(i) ? (x?.reasons || []).map((r) => REASON[r]).join(" · ") : null, marks.includes(i) ? "학생 표시" : null].filter(Boolean).join(" · ");
+        return h("li", { lang: "de" }, sents[i] || `문장 ${i + 1}`, h("small", {}, tags));
+      }));
+    });
+  }
+  return section;
+}
+
+/** Sentence texts of an article, tokenized exactly like the student page. */
+async function sentencesOf(articleId) {
+  if (!sentenceCache.has(articleId)) {
+    sentenceCache.set(articleId, fetch(`/api/articles/${encodeURIComponent(articleId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((a) => (a ? renderArticle(document.createElement("div"), a).sentences.map((s) => s.text) : [])));
+  }
+  return sentenceCache.get(articleId);
+}
+
+async function startReplay(sess) {
+  try {
+    await openReplay({ sessionId: sess.id, token, userId: drawerData.user_id });
+  } catch (err) {
+    toast(err.message || "재생을 시작하지 못했어요.");
+  }
 }
 
 function mm(label, value) {

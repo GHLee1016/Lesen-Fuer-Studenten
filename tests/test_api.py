@@ -212,3 +212,10 @@ def test_admin_import_list_delete(client, monkeypatch):
     assert bad.status_code == 400
     assert client.delete("/api/admin/articles/schwarze-katze", headers=AUTH).status_code == 404  # built-in
     assert client.delete("/api/admin/articles/dw-111", headers=AUTH).status_code == 200
+
+
+def test_mymemory_junk_is_filtered():
+    data = {"responseStatus": 200, "responseData": {"translatedText": "MAN", "match": 0.98},
+            "matches": [{"translation": "''not used''", "match": 0.9}, {"translation": "사람들", "match": 0.8}]}
+    assert translate.pick_mymemory("man", "ko", data) == "사람들"
+    assert translate.pick_mymemory("man", "ko", {"responseData": {"translatedText": "MAN"}, "matches": []}) is None
