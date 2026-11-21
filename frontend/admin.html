@@ -9,9 +9,10 @@
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Literata:opsz,wght@7..72,300;7..72,400;7..72,500&family=Noto+Serif+KR:wght@300;400&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
   <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/reader.css" />
   <link rel="stylesheet" href="/static/css/admin.css" />
 </head>
 <body>
@@ -95,6 +96,27 @@
             <tbody id="rows"></tbody>
           </table>
         </div>
+      </section>
+
+      <section class="articles">
+        <div class="table-head">
+          <div>
+            <h2>지문</h2>
+            <p class="muted" style="margin:6px 0 0;font-size:14px">DW Deutsch lernen 레슨 주소를 붙여 넣으면 본문, 수준(A1–C1), 용어 풀이, 이해도 문제를 가져와요.</p>
+          </div>
+        </div>
+        <form class="import-form" id="importForm">
+          <input class="input" id="importUrl" type="url" placeholder="https://learngerman.dw.com/de/…/l-12345678" required />
+          <button class="btn btn-primary" id="importBtn" type="submit">가져오기</button>
+        </form>
+        <span class="error-text" id="importError" hidden></span>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>제목</th><th>수준</th><th class="r">단어</th><th class="r">문항</th><th>출처</th><th></th></tr></thead>
+            <tbody id="articleRows"></tbody>
+          </table>
+        </div>
+        <p class="hint">가져온 지문은 이 서버의 데이터베이스에만 저장되고 학생 화면에 원문 링크와 함께 표시돼요. 공개 배포 전에는 DW 이용 약관을 확인해 주세요.</p>
       </section>
     </main>
 

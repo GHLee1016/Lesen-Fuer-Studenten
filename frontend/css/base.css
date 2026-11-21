@@ -27,9 +27,13 @@
   --shadow-lg: 0 2px 6px rgba(7, 58, 75, .06), 0 28px 70px rgba(7, 58, 75, .14);
   --radius: 6px;
   --radius-sm: 3px;
-  --font-ui: "Instrument Sans", "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
-  --font-display: "Literata", "Noto Serif KR", Georgia, serif;
-  --font-read: "Literata", Georgia, "Times New Roman", serif;
+  /* Korean and UI text: Pretendard. German text: Tinos, which has the same
+     metrics as Times New Roman, so line breaks match on every OS (the
+     teacher's replay re-renders the text at the student's width). */
+  --font-ui: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
+  --font-display: var(--font-ui);
+  --font-de: "Tinos", "Times New Roman", Times, serif;
+  --font-read: var(--font-de);
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* Light theme only: a bright screen keeps the face lit for the tracker. */
   color-scheme: light;
@@ -47,7 +51,8 @@ body {
   overflow-wrap: break-word;
 }
 h1, h2, h3, h4 { margin: 0; color: var(--ink); }
-.display, h1, h2 { font-family: var(--font-display); font-weight: 300; letter-spacing: -0.025em; line-height: 1.18; }
+.display, h1, h2 { font-family: var(--font-display); font-weight: 400; letter-spacing: -0.035em; line-height: 1.2; }
+:lang(de) { font-family: var(--font-de); letter-spacing: 0; }
 h3, h4 { font-family: var(--font-ui); font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
 a { color: var(--ink); }
 [hidden] { display: none !important; }
@@ -64,7 +69,7 @@ a { color: var(--ink); }
   border-bottom: 1px solid var(--line);
 }
 .brand { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ink); text-decoration: none; white-space: nowrap; }
-.brand b { font: 500 22px/1 var(--font-display); letter-spacing: -0.03em; }
+.brand b { font: 700 21px/1 var(--font-de); letter-spacing: -0.01em; }
 .brand small { font: 600 11px/1 var(--font-ui); letter-spacing: .14em; text-transform: uppercase; color: var(--text-3); }
 .spacer { flex: 1; }
 
@@ -102,6 +107,8 @@ a { color: var(--ink); }
   border: 1px solid var(--line-2); background: #fff; color: var(--ink);
   font: 15px var(--font-ui); width: 100%;
 }
+select.input { appearance: none; padding-right: 36px; cursor: pointer;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23506b74' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center; }
 .hint { font-size: 12.5px; color: var(--text-3); }
 .error-text { font-size: 13px; color: var(--pink); font-weight: 600; }
 
