@@ -1,0 +1,49 @@
+{
+  "id": "schwarze-katze",
+  "level": "B1",
+  "title": "Achtung, schwarze Katze!?",
+  "lead": "An Halloween sieht man sie überall: schwarze Katzen. Viele Menschen denken, dass sie Unglück bringen. Aber in manchen Ländern ist es genau anders herum. Wie kam das und was bedeutet das heute noch für diese Tiere?",
+  "paragraphs": [
+    "Am 31. Oktober, an Halloween, sehen wir schwarze Katzen vor allem als Deko oder Kostüm. Ihr dunkles Fell und die geheimnisvollen Augen wirken auf viele Menschen etwas gruselig. Wenn eine schwarze Katze vor einem über die Straße läuft, denken viele, dass etwas Schlechtes passiert. Aber schon lange vor Halloween haben Menschen schwarze Katzen mit Angst und dem Bösen verbunden. Halloween wurde erst im 19. Jahrhundert in den USA bekannt. Im Mittelalter dachten die Menschen, schwarze Katzen gehören zum Teufel. Sie brachten sie mit Hexen zusammen. Viele schwarze Katzen wurden damals verfolgt und verbrannt. Das passierte an manchen Orten sogar noch bis ins 18. Jahrhundert.",
+    "Aber nicht überall bringen schwarze Katzen Unglück. Im alten Ägypten sahen die Menschen sie als heilig an. Sie verehrten die Göttin Bastet, die schwangere Frauen, Kinder und Mütter beschützt. In Großbritannien und Irland soll es Glück bringen, wenn man einer schwarzen Katze begegnet. In Japan sollen sie vor Krankheiten schützen. Außerdem sollen sie Frauen bei der Liebe helfen. Auch in Filmen und Serien gibt es sie als Schutz-Symbol. Ein Beispiel ist „Luna“ aus der japanischen Serie „Sailor Moon“. Das ist eine sprechende schwarze Katze, die die Heldinnen beschützt.",
+    "Für die schwarze Farbe des Fells ist ein bestimmtes Gen verantwortlich. Es heißt B-Gen. Dieses Gen macht ein dunkles Farbmittel. Dadurch wird das Fell, oft auch Nase und Pfoten, schwarz. Schwarze Katzen sind auch öfter männlich. Das liegt daran, dass das Gen auf einem bestimmten Chromosom liegt, dem X-Chromosom. Wissenschaftler haben auch herausgefunden, dass dieses Gen die Tiere besser vor Krankheiten schützt. Außerdem ist das dunkle Fell nützlich, wenn die Katzen nachts Mäuse jagen.",
+    "Die dunkle Farbe kann aber auch ein Problem sein. Das passiert besonders dann, wenn diese Katzen ein neues Zuhause suchen. Der Deutsche Tierschutzbund hat 2020 eine Umfrage gemacht. 48 Prozent der Tierheime sagten, dass schwarze Katzen schwerer ein neues Zuhause finden. Viele Menschen finden sie nicht so schön. Außerdem kann man sie nicht so gut für Fotos in sozialen Netzwerken fotografieren. Nur an Halloween interessieren sich mehr Menschen für sie. Aber gerade dann wollen viele Tierheime keine schwarzen Katzen vermitteln. Sie wollen die Tiere schützen. Sie sollten nicht als Deko benutzt oder sogar für seltsame Rituale missbraucht werden."
+  ],
+  "quiz": [
+    {
+      "id": "q1",
+      "question": "중세 사람들은 검은 고양이를 무엇과 연결지어 생각했나요?",
+      "options": ["행운과 부", "악마와 마녀", "질병 치료", "풍년과 수확"],
+      "answer": 1
+    },
+    {
+      "id": "q2",
+      "question": "고대 이집트에서 검은 고양이는 어떻게 여겨졌나요?",
+      "options": ["불길한 동물", "신성한 동물", "사냥용 동물", "기사에 언급되지 않음"],
+      "answer": 1
+    },
+    {
+      "id": "q3",
+      "question": "영국과 아일랜드에서는 검은 고양이를 만나면 어떻게 된다고 하나요?",
+      "options": ["병에 걸린다", "불운이 찾아온다", "행운이 찾아온다", "비가 온다"],
+      "answer": 2
+    },
+    {
+      "id": "q4",
+      "question": "2020년 독일 동물보호연맹 설문에서, 검은 고양이가 새 가정을 찾기 더 어렵다고 답한 보호소는 몇 퍼센트였나요?",
+      "options": ["18%", "28%", "48%", "84%"],
+      "answer": 2
+    },
+    {
+      "id": "q5",
+      "question": "많은 보호소가 핼러윈 무렵 검은 고양이 입양을 꺼리는 이유는 무엇인가요?",
+      "options": [
+        "겨울이라 고양이가 추위에 약해서",
+        "장식으로 쓰이거나 이상한 의식에 악용될까 봐",
+        "사진이 잘 나오지 않아서",
+        "입양 신청이 너무 적어서"
+      ],
+      "answer": 1
+    }
+  ]
+}
