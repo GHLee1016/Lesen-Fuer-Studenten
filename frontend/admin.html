@@ -1,363 +1,71 @@
 <!doctype html>
 <html lang="ko">
-
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Admin — Levels</title>
-  <style>
-    :root {
-      --bg: #f6f7fb;
-      --card: #fff;
-      --line: #e7e9ef;
-      --txt: #111;
-      --sub: #666;
-      --blue: #2b8cff;
-      --green: #00b470;
-      --amber: #ffb300;
-      --red: #e2475d;
-    }
-
-    * {
-      box-sizing: border-box
-    }
-
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--txt);
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif
-    }
-
-    #wrap {
-      max-width: 1100px;
-      margin: 24px auto;
-      background: var(--card);
-      border-radius: 12px;
-      padding: 16px 20px;
-      box-shadow: 0 8px 30px rgba(0, 0, 0, .06)
-    }
-
-    h3,
-    h4 {
-      margin: 8px 0
-    }
-
-    .row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      margin: 8px 0;
-      flex-wrap: wrap
-    }
-
-    input[type="text"],
-    select {
-      height: 34px;
-      padding: 6px 8px;
-      border: 1px solid var(--line);
-      border-radius: 8px
-    }
-
-    input#token {
-      width: 220px
-    }
-
-    button {
-      height: 34px;
-      padding: 0 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      cursor: pointer
-    }
-
-    button.primary {
-      background: var(--blue);
-      color: #fff;
-      border-color: var(--blue)
-    }
-
-    .cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 16px
-    }
-
-    .card {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      padding: 12px;
-      min-height: 200px;
-      background: #fff
-    }
-
-    .tag {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-size: 12px
-    }
-
-    .tag.high {
-      background: rgba(0, 180, 112, .12);
-      color: var(--green);
-      border: 1px solid rgba(0, 180, 112, .35)
-    }
-
-    .tag.medium {
-      background: rgba(255, 179, 0, .12);
-      color: var(--amber);
-      border: 1px solid rgba(255, 179, 0, .35)
-    }
-
-    .tag.low {
-      background: rgba(226, 71, 93, .12);
-      color: var(--red);
-      border: 1px solid rgba(226, 71, 93, .35)
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse
-    }
-
-    th,
-    td {
-      padding: 8px;
-      border-bottom: 1px solid var(--line);
-      font-size: 14px
-    }
-
-    th {
-      text-align: left;
-      color: var(--sub);
-      font-weight: 600
-    }
-
-    .muted {
-      color: var(--sub)
-    }
-
-    @media (max-width:960px) {
-      .cols {
-        grid-template-columns: 1fr
-      }
-    }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>교사용 대시보드 · Lesen für Studenten</title>
+  <meta name="robots" content="noindex" />
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,600&display=swap" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="/static/css/base.css" />
+  <link rel="stylesheet" href="/static/css/admin.css" />
 </head>
-
 <body>
-  <div id="wrap">
-    <div class="row">
-      <h3 style="margin-right:auto">Users by Level</h3>
-      <label for="token">Admin Token</label>
-      <input id="token" type="text" placeholder="Enter admin token..." />
-      <button id="btnRefresh">Refresh</button>
-      <button id="btnCsv">Export CSV</button>
-      <button id="btnJson">Export JSON</button>
-    </div>
+  <!-- Login -->
+  <section class="login" id="loginView">
+    <form class="card login-card" id="loginForm">
+      <div class="brand"><span class="brand-mark">L</span>Lesen für Studenten</div>
+      <h1>교사용 대시보드</h1>
+      <div class="field">
+        <label for="token">관리자 토큰</label>
+        <input class="input" id="token" type="password" autocomplete="current-password" required />
+        <span class="hint">서버의 ADMIN_TOKEN 환경변수 값이에요.</span>
+      </div>
+      <span class="error-text" id="loginError" hidden></span>
+      <button class="btn btn-primary btn-lg" id="loginBtn" type="submit">로그인</button>
+    </form>
+  </section>
 
-    <div class="row">
-      <div style="flex:1"></div>
-      <label for="hi">High ≥</label><input id="hi" type="text" value="70" style="width:72px" />
-      <label for="lo">Low < </label><input id="lo" type="text" value="40" style="width:72px" />
-          <button id="btnApply" class="primary">Apply</button>
-          <span id="msg" class="muted"></span>
-    </div>
+  <!-- Dashboard -->
+  <div id="dashView" hidden>
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark">L</span>Lesen für Studenten <small>교사용</small></div>
+      <div class="spacer"></div>
+      <span class="chip" id="liveChip"><span class="dot"></span>연결 중</span>
+      <button class="btn btn-sm" id="exportCsv" type="button">CSV</button>
+      <button class="btn btn-sm" id="exportJson" type="button">JSON</button>
+      <button class="btn btn-sm btn-ghost" id="logout" type="button">로그아웃</button>
+    </header>
 
-    <div class="cols">
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h4>High</h4><span class="tag high">≥ High</span>
+    <main class="dash">
+      <div class="dash-head">
+        <div>
+          <h1>학생 현황</h1>
+          <p class="muted">학생마다 가장 최근 세션의 최종 점수로 그룹을 나눠요. 새 결과가 제출되면 바로 반영돼요.</p>
         </div>
-        <table>
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Last Score</th>
-            </tr>
-          </thead>
-          <tbody id="high"></tbody>
-        </table>
+        <form class="levels card" id="levelsForm">
+          <label>상위 ≥ <input class="input num" id="hi" type="number" min="0" max="100" step="1" /></label>
+          <label>하위 &lt; <input class="input num" id="lo" type="number" min="0" max="100" step="1" /></label>
+          <button class="btn btn-sm btn-primary" type="submit">적용</button>
+        </form>
       </div>
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h4>Medium</h4><span class="tag medium">[Low, High]</span>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Last Score</th>
-            </tr>
-          </thead>
-          <tbody id="medium"></tbody>
-        </table>
+
+      <dl class="kpis" id="kpis"></dl>
+
+      <div class="groups">
+        <section class="group" data-level="high"><header><h2>상위</h2><span class="chip good" data-count></span></header><div class="list"></div></section>
+        <section class="group" data-level="medium"><header><h2>중위</h2><span class="chip warn" data-count></span></header><div class="list"></div></section>
+        <section class="group" data-level="low"><header><h2>하위</h2><span class="chip bad" data-count></span></header><div class="list"></div></section>
       </div>
-      <div class="card">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <h4>Low</h4><span class="tag low">
-            < Low</span>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Last Score</th>
-            </tr>
-          </thead>
-          <tbody id="low"></tbody>
-        </table>
-      </div>
-    </div>
+    </main>
+
+    <div class="scrim" id="scrim" hidden></div>
+    <aside class="drawer" id="drawer" hidden aria-label="학생 상세"></aside>
   </div>
 
-  <script>
-    // =============================================
-    // ========== [수정] API 주소 자동 감지 ==========
-    // =============================================
-    const ORIGIN = window.location.origin; // 예: http://localhost:8000 또는 https://my-app.com
-    const ADMIN_WS = ORIGIN.replace(/^http/, 'ws'); // http -> ws, https -> wss
-    // =============================================
-
-    const tokenEl = document.getElementById("token");
-    const hiEl = document.getElementById("hi");
-    const loEl = document.getElementById("lo");
-    const msgEl = document.getElementById("msg");
-    const tbody = {
-      high: document.getElementById("high"),
-      medium: document.getElementById("medium"),
-      low: document.getElementById("low"),
-    };
-
-    let allGroupsData = {};
-
-    function setMsg(s, ok = true) { msgEl.textContent = s; msgEl.style.color = ok ? "#2b8cff" : "crimson"; if (s) setTimeout(() => msgEl.textContent = "", 2000); }
-
-    function render(groups) {
-      ["high", "medium", "low"].forEach(lv => {
-        const rows = (groups[lv] || [])
-          .map(it => `<tr><td>${it.user_id}</td><td>${it.last_score}</td></tr>`)
-          .join("");
-        tbody[lv].innerHTML = rows || `<tr><td class="muted" colspan="2">No users</td></tr>`;
-      });
-    }
-
-    async function fetchJSON(url, opts = {}) {
-      const res = await fetch(url, opts);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    }
-
-    async function refresh() {
-      // [수정] 토큰이 비어있으면 요청을 보내지 않습니다.
-      const token = tokenEl.value.trim();
-      if (!token) {
-        return setMsg("Token required for refresh/apply/download.", false);
-      }
-
-      try {
-        const data = await fetchJSON(`${ORIGIN}/admin/levels`, { headers: { "X-Admin-Token": token } });
-        allGroupsData = data;
-        render(allGroupsData);
-        setMsg("Refreshed!", true);
-      } catch (e) {
-        setMsg("Auth/connection error (Check token)", false);
-        allGroupsData = {};
-        render(allGroupsData);
-      }
-    }
-
-    async function applyThresholds() {
-      const token = tokenEl.value.trim();
-      if (!token) {
-        return setMsg("Token required for refresh/apply/download.", false);
-      }
-
-      const hi = parseFloat(hiEl.value), lo = parseFloat(loEl.value);
-      const res = await fetch(`${ORIGIN}/admin/levels/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Admin-Token": token },
-        body: JSON.stringify({ high: hi, low: lo })
-      });
-      if (res.ok) {
-        setMsg("Updated! New groups are pushed automatically.", true);
-      } else {
-        setMsg("Update failed", false);
-      }
-    }
-
-    function download(url) {
-      const token = tokenEl.value.trim();
-      if (!token) {
-        return setMsg("Token required for refresh/apply/download.", false);
-      }
-
-      // [수정] URL에 토큰을 쿼리 파라미터로 추가
-      const downloadUrl = `${url}?token=${encodeURIComponent(token)}`;
-
-      const a = document.createElement("a");
-      a.href = downloadUrl;
-      a.setAttribute("download", "");
-      a.click();
-    }
-
-    document.getElementById("btnRefresh").onclick = refresh;
-    document.getElementById("btnApply").onclick = applyThresholds;
-    document.getElementById("btnCsv").onclick = () => download(`${ORIGIN}/admin/levels/export.csv`);
-    document.getElementById("btnJson").onclick = () => download(`${ORIGIN}/admin/levels/export.json`);
-
-    let ws;
-    function connectWS() {
-      const token = tokenEl.value.trim();
-      if (!token) {
-        setMsg("Token required for WebSocket", false);
-        setTimeout(connectWS, 1500);
-        return;
-      }
-
-      ws = new WebSocket(`${ADMIN_WS}/admin/ws?token=${encodeURIComponent(token)}`);
-
-      // [신규] Keep-Alive (10초마다 핑 전송)
-      setInterval(() => {
-        if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type: "ping" }));
-      }, 10000);
-
-      ws.onmessage = (e) => {
-        try {
-          const msg = JSON.parse(e.data);
-          console.log("[Admin] Received WS message:", msg.type, msg.data); // [디버그] 수신 데이터 로그
-
-          if (msg.type === "groups") {
-            allGroupsData = msg.data;
-            render(allGroupsData);
-            console.log("[Admin] Rendered groups:", allGroupsData); // [디버그] 렌더링 확인
-          }
-        } catch (err) {
-          console.error("WS msg parse error", err);
-        }
-      };
-
-      ws.onclose = (e) => {
-        if (e.code === 4401) { // 서버에서 보낸 'Invalid token'
-          setMsg("WebSocket: Invalid Token", false);
-        } else {
-          console.log("WS closed, reconnecting...");
-          setTimeout(connectWS, 1500);
-        }
-      };
-
-      ws.onerror = (e) => {
-        console.warn("WS Error", e);
-        setMsg("WebSocket connection error", false);
-      };
-    }
-
-    connectWS();
-
-    // 페이지 로드 시 자동 'refresh()' 호출 삭제
-  </script>
+  <script type="module" src="/static/js/admin.js"></script>
 </body>
-
 </html>
