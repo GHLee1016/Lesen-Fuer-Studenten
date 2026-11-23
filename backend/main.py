@@ -211,6 +211,7 @@ class SessionIn(BaseModel):
     started_at: int  # epoch ms
     duration_ms: float = Field(gt=0, le=config.MAX_DURATION_MS)
     calibration_error_px: float | None = Field(default=None, ge=0)
+    calibration_jitter_px: float | None = Field(default=None, ge=0)
     layout: LayoutIn
     aois: list[AOIIn] = Field(min_length=1, max_length=200)
     # [t_ms, x, y] triples, t relative to reading start
@@ -237,7 +238,8 @@ def _evaluate(body: SessionIn, article: dict) -> dict:
     samples = [analysis.Sample(t, x, y) for t, x, y in body.samples]
     aois = [analysis.AOI(a.id, a.x, a.y, a.w, a.h, a.words) for a in body.aois]
     words = [analysis.Word(*w) for w in body.words]
-    metrics = analysis.analyze(samples, aois, body.duration_ms, body.layout.line_height, words=words or None)
+    params = analysis.adapt(analysis.AnalysisParams(), body.calibration_error_px, body.calibration_jitter_px)
+    metrics = analysis.analyze(samples, aois, body.duration_ms, body.layout.line_height, params, words=words or None)
     gaze = analysis.gaze_score(metrics)
     quiz, feedback = grade_quiz(article, body.answers)
     # Without quiz questions the final score is the gaze score alone.
@@ -250,6 +252,7 @@ def _evaluate(body: SessionIn, article: dict) -> dict:
         "started_at": body.started_at,
         "duration_ms": round(body.duration_ms),
         "calib_error_px": body.calibration_error_px,
+        "calib_jitter_px": body.calibration_jitter_px,
         "gaze_score": gaze,
         "quiz_score": quiz,
         "final_score": final,
@@ -365,6 +368,16 @@ def admin_delete_article(article_id: str):
     if not db.delete_article(article_id):
         raise HTTPException(status_code=404, detail="Only imported articles can be deleted")
     return {"ok": True}
+
+
+@app.post("/api/admin/reanalyze", dependencies=[Depends(require_admin)])
+async def admin_reanalyze():
+    """Recompute every stored session with the current analysis parameters."""
+    from .reanalyze import reanalyze_all
+
+    changed = await run_in_threadpool(reanalyze_all)
+    await admin_hub.broadcast_overview()
+    return {"changed": changed}
 
 
 @app.get("/api/admin/vocab/{user_id}.csv", dependencies=[Depends(require_admin)])

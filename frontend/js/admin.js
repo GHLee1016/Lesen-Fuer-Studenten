@@ -270,6 +270,22 @@ $("#levelsForm").addEventListener("submit", async (e) => {
   }
 });
 
+$("#reanalyzeBtn").addEventListener("click", async () => {
+  if (!confirm("저장된 모든 세션을 현재 판정 기준으로 다시 분석할까요? 점수가 바뀔 수 있어요.")) return;
+  const btn = $("#reanalyzeBtn");
+  btn.disabled = true;
+  btn.textContent = "분석 중…";
+  try {
+    const { changed } = await (await api("/api/admin/reanalyze", { method: "POST" })).json();
+    toast(changed.length ? `${changed.length}개 세션의 점수가 바뀌었어요.` : "바뀐 점수가 없어요.");
+  } catch (err) {
+    if (err.message !== "unauthorized") toast("다시 분석하지 못했어요.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "전체 다시 분석";
+  }
+});
+
 // ----------------------------------------------------------- export ----
 
 async function download(path, filename) {
@@ -426,6 +442,12 @@ function hardSummary(sess) {
       h("div", {}, h("dt", {}, "학생 표시"), h("dd", {}, `${marks.length}문장`)),
       h("div", {}, h("dt", {}, "감점"), h("dd", {}, `−${d.penalty}`)),
     ),
+    d.reliability != null && d.reliability < 1
+      ? h("p", { class: "hint", style: { margin: "8px 0 0" } },
+          d.reliability === 0
+            ? `보정 오차(${Math.round(sess.calib_error_px)}px)가 커서 감점을 보류했어요. 계산상 감점은 ${d.raw_penalty}점이에요.`
+            : `보정 오차(${Math.round(sess.calib_error_px)}px)를 고려해 감점을 ${Math.round(d.reliability * 100)}%만 적용했어요 (계산상 ${d.raw_penalty}점).`)
+      : null,
   );
   const ids = [...new Set([...d.difficult_sentences, ...marks])].sort((a, b) => a - b);
   if (ids.length) {

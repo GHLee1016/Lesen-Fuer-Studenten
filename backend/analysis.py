@@ -69,12 +69,12 @@ class AnalysisParams:
     word_margin_y_lines: float = 0.45
     # Sentence is "slow" when its time per word is this many times the
     # reader's own median, and it took at least min_sentence_ms.
-    slow_factor: float = 1.75
+    slow_factor: float = 2.0
     min_sentence_ms: float = 1200.0
-    min_sentence_words: int = 3
+    min_sentence_words: int = 5
     # Sentence is "re-read" when the reader came back to it this many times
     # after moving on to a later sentence.
-    reread_returns: int = 2
+    reread_returns: int = 1
     # Word candidates: long dwell compared with the reader's median word dwell.
     word_min_ms: float = 700.0
     word_factor: float = 3.5
@@ -83,6 +83,57 @@ class AnalysisParams:
     penalty_sentence_weight: float = 40.0  # x share of words in difficult sentences
     penalty_per_word: float = 1.5
     max_penalty: float = 25.0
+    # --- robustness to webcam noise ---------------------------------------
+    # A return to earlier text only counts when the gaze moved at least this
+    # many lines above the furthest point read so far and stayed there for
+    # return_min_ms. Webcam jitter of about a line otherwise looks like
+    # constant re-reading.
+    return_min_lines: float = 2.0
+    return_min_ms: float = 500.0
+    # I-DT dispersion grows with the tracker's frame-to-frame jitter.
+    disp_jitter_factor: float = 6.0
+    # Paragraph boxes get a vertical margin of this fraction of the
+    # calibration error.
+    aoi_margin_error_factor: float = 0.5
+    # Word-level candidates need gaze accurate to about half a line.
+    word_max_error_px: float = 40.0
+    # The penalty is applied in full up to penalty_full_error_px of
+    # calibration error, fades out linearly and is withheld from
+    # penalty_zero_error_px on: with less accurate gaze the detection is
+    # not reliable enough to cost a student points.
+    penalty_full_error_px: float = 60.0
+    penalty_zero_error_px: float = 150.0
+    # Measured tracker quality for this session (filled in by adapt()).
+    error_px: float = 0.0
+    jitter_px: float = 0.0
+
+
+def adapt(p: AnalysisParams, error_px: float | None, jitter_px: float | None) -> AnalysisParams:
+    """Parameters for one session, given its measured calibration quality.
+
+    error_px  - mean validation error after calibration (None: mouse demo)
+    jitter_px - frame-to-frame gaze noise measured while fixating dots
+    """
+    from dataclasses import replace
+
+    e = max(0.0, error_px or 0.0)
+    j = max(0.0, jitter_px or 0.0)
+    return replace(
+        p,
+        error_px=e,
+        jitter_px=j,
+        max_dispersion_px=max(p.max_dispersion_px, p.disp_jitter_factor * j),
+        aoi_margin_y=max(p.aoi_margin_y, p.aoi_margin_error_factor * e),
+    )
+
+
+def reliability(p: AnalysisParams) -> float:
+    """1.0 when gaze is accurate enough to penalise difficulty, falling to 0."""
+    if p.error_px <= p.penalty_full_error_px:
+        return 1.0
+    if p.error_px >= p.penalty_zero_error_px:
+        return 0.0
+    return (p.penalty_zero_error_px - p.error_px) / (p.penalty_zero_error_px - p.penalty_full_error_px)
 
 
 def detect_fixations(samples: Sequence[Sample], p: AnalysisParams = AnalysisParams()) -> list[Fixation]:
@@ -217,24 +268,45 @@ def difficulty(fixations: Sequence[Fixation], words: Sequence[Word], line_height
     w_dwell = [0.0] * len(words)
     w_returns = [0] * len(words)
 
-    max_sentence_seen = -1
-    prev_sentence = None
-    last_visit_word = {}
-    for k, (f, wi) in enumerate(zip(fixations, hits)):
+    for f, wi in zip(fixations, hits):
         if wi is None:
             continue
-        s = words[wi].s
-        s_dwell[s] += f.duration
+        s_dwell[words[wi].s] += f.duration
         w_dwell[wi] += f.duration
-        if s != prev_sentence and s < max_sentence_seen:
-            s_returns[s] += 1  # came back from later text
-        if wi in last_visit_word and last_visit_word[wi] < k - 1:
-            # left the word and came back; only count it if a later sentence was read in between
-            if any(h is not None and words[h].s > s for h in hits[last_visit_word[wi] + 1 : k]):
-                w_returns[wi] += 1
-        last_visit_word[wi] = k
-        prev_sentence = s
-        max_sentence_seen = max(max_sentence_seen, s)
+
+    # Returns: episodes where the gaze went back well above the furthest
+    # line read so far and stayed there. The frontier follows the median of
+    # the last three fixations so a single noisy fixation cannot move it.
+    back_px = p.return_min_lines * line_height
+    frontier = float("-inf")
+    recent: list[float] = []
+    episode: list[int] = []
+
+    def close_episode():
+        if not episode:
+            return
+        if sum(fixations[k].duration for k in episode) >= p.return_min_ms:
+            per_s: dict[int, float] = {}
+            per_w: dict[int, float] = {}
+            for k in episode:
+                wi = hits[k]
+                if wi is not None:
+                    per_s[words[wi].s] = per_s.get(words[wi].s, 0.0) + fixations[k].duration
+                    per_w[wi] = per_w.get(wi, 0.0) + fixations[k].duration
+            if per_s:
+                s_returns[max(per_s, key=per_s.get)] += 1
+            if per_w:
+                w_returns[max(per_w, key=per_w.get)] += 1
+        episode.clear()
+
+    for k, f in enumerate(fixations):
+        if f.y <= frontier - back_px:
+            episode.append(k)
+            continue
+        close_episode()
+        recent = (recent + [f.y])[-3:]
+        frontier = max(frontier, sorted(recent)[len(recent) // 2])
+    close_episode()
 
     rates = [s_dwell[i] / s_words[i] for i in range(n_sent) if s_dwell[i] > 0 and s_words[i] >= p.min_sentence_words]
     baseline = _median(rates)
@@ -252,20 +324,25 @@ def difficulty(fixations: Sequence[Fixation], words: Sequence[Word], line_height
             difficult_words_in_sentences += s_words[i]
         sentences.append({"s": i, "words": s_words[i], "dwell_ms": round(s_dwell[i]), "ms_per_word": round(rate), "returns": s_returns[i], "reasons": reasons})
 
-    fixated = [d for d in w_dwell if d > 0]
-    w_base = _median(fixated)
-    threshold = max(p.word_min_ms, p.word_factor * w_base)
-    cand = [
-        {"i": i, "dwell_ms": round(w_dwell[i]), "returns": w_returns[i]}
-        for i in range(len(words))
-        if w_dwell[i] >= threshold or w_returns[i] >= 2
-    ]
-    cand.sort(key=lambda c: (c["returns"], c["dwell_ms"]), reverse=True)
-    cand = cand[: p.max_difficult_words]
+    words_reliable = p.error_px <= p.word_max_error_px
+    cand = []
+    if words_reliable:
+        fixated = [d for d in w_dwell if d > 0]
+        w_base = _median(fixated)
+        threshold = max(p.word_min_ms, p.word_factor * w_base)
+        cand = [
+            {"i": i, "dwell_ms": round(w_dwell[i]), "returns": w_returns[i]}
+            for i in range(len(words))
+            if w_dwell[i] >= threshold or w_returns[i] >= 2
+        ]
+        cand.sort(key=lambda c: (c["returns"], c["dwell_ms"]), reverse=True)
+        cand = cand[: p.max_difficult_words]
 
     total = len(words) or 1
     share = difficult_words_in_sentences / total
-    penalty = min(p.max_penalty, round(p.penalty_sentence_weight * share + p.penalty_per_word * len(cand)))
+    raw_penalty = min(p.max_penalty, p.penalty_sentence_weight * share + p.penalty_per_word * len(cand))
+    rel = reliability(p)
+    penalty = round(raw_penalty * rel)
     return {
         "baseline_ms_per_word": round(baseline),
         "sentences": sentences,
@@ -273,6 +350,9 @@ def difficulty(fixations: Sequence[Fixation], words: Sequence[Word], line_height
         "difficult_words": cand,
         "difficult_share": round(share, 3),
         "penalty": int(penalty),
+        "raw_penalty": round(raw_penalty, 1),
+        "reliability": round(rel, 2),
+        "words_reliable": words_reliable,
         "word_hits": sum(1 for h in hits if h is not None),
     }
 
