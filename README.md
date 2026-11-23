@@ -1,5 +1,7 @@
 # Lesen für Studenten
 
+[![CI](https://github.com/GHLee1016/Lesen-Fuer-Studenten/actions/workflows/ci.yml/badge.svg)](https://github.com/GHLee1016/Lesen-Fuer-Studenten/actions/workflows/ci.yml)
+
 웹캠 시선 추적으로 **독일어 읽기 과정**을 기록하고 분석하는 웹 애플리케이션입니다.
 학생이 기사를 읽는 동안 시선이 어느 문단에 얼마나 머물렀는지, 어디를 건너뛰고 어디로 되돌아갔는지, 어느 문장에서 막혔는지를 측정하고, 내용 퀴즈와 합쳐 점수를 냅니다. 모르는 단어는 눌러서 모국어 뜻을 바로 보고 단어장에 모을 수 있습니다. 교사는 대시보드에서 반 전체 현황과 학생별 읽기 과정을 실시간으로 확인하고 시선을 다시 재생해 볼 수 있습니다.
 
@@ -133,6 +135,8 @@ ADMIN_TOKEN=change-me uvicorn backend.main:app --reload --port 8000
 - 무료 인스턴스의 디스크는 재배포 때 초기화됩니다. 데이터를 계속 보관하려면 Persistent Disk를 붙이고 `DB_PATH`를 그 경로로 지정하세요.
 
 ## 테스트
+
+PR과 `main` 푸시마다 GitHub Actions(`.github/workflows/ci.yml`)가 pytest를 돌린 뒤, 빈 데이터베이스로 서버를 띄워 아래 E2E 시나리오 두 개를 실행합니다. 스크린샷은 실행 결과의 `e2e-screenshots` 아티팩트로 7일간 받을 수 있습니다.
 
 ```bash
 pip install -r requirements-dev.txt
