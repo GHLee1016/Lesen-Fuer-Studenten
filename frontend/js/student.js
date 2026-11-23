@@ -7,7 +7,7 @@ import { vocabTable, openVocabDialog } from "./vocab.js";
 
 const ARTICLE_PARAM = new URLSearchParams(location.search).get("article");
 const USER_RE = /^[\w.\-가-힣]{1,40}$/;
-const STATES = ["start", "calibrate", "read", "quiz", "results"];
+const STATES = ["start", "calibrate", "read", "quiz", "reflect", "results"];
 
 const tracker = new GazeTracker();
 const st = {
@@ -255,6 +255,9 @@ el.article.addEventListener("click", (e) => {
   if (state === "read") {
     const w = e.target.closest(".w");
     if (w) lookup(Number(w.dataset.i));
+  } else if (state === "reflect") {
+    const sent = e.target.closest(".sent");
+    if (sent) toggleSelf(Number(sent.dataset.s));
   } else if (state === "results") {
     const sent = e.target.closest(".sent");
     if (sent) toggleMark(Number(sent.dataset.s));
@@ -402,9 +405,51 @@ async function submit(answers) {
     toast(`결과를 전송하지 못했어요 (${err.message}). 잠시 후 다시 제출해 주세요.`, 4500);
     return;
   }
+  startReflect();
+}
+
+// ---------------------------------------------------------- reflect ----
+// Before seeing the automatic result, the student marks the sentences they
+// found difficult. These unbiased reports are what the teacher's
+// validation page compares the detection with.
+
+function startReflect() {
+  st.selfMarks = new Set();
+  el.article.querySelectorAll(".sent").forEach((n) => n.classList.remove("auto", "marked"));
+  updateReflectCount();
+  setState("reflect");
+}
+
+function toggleSelf(s) {
+  if (st.selfMarks.has(s)) st.selfMarks.delete(s); else st.selfMarks.add(s);
+  el.article.querySelector(`.sent[data-s="${s}"]`)?.classList.toggle("marked", st.selfMarks.has(s));
+  updateReflectCount();
+}
+
+function updateReflectCount() {
+  const n = st.selfMarks.size;
+  $("#reflectCount").textContent = `표시한 문장 ${n}개`;
+  $("#reflectNone").hidden = n > 0;
+}
+
+async function finishReflect() {
+  const btn = $("#reflectDone");
+  btn.disabled = true;
+  try {
+    await fetch(`/api/sessions/${st.result.session_id}/self-marks`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sentences: [...st.selfMarks] }),
+    });
+  } catch {
+    toast("표시를 저장하지 못했지만 결과는 볼 수 있어요.");
+  }
+  btn.disabled = false;
+  st.result.marks = [...st.selfMarks];
   setState("results");
   renderResults();
 }
+$("#reflectDone").addEventListener("click", finishReflect);
+$("#reflectNone").addEventListener("click", finishReflect);
 
 // ---------------------------------------------------------- results ----
 

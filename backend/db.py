@@ -62,6 +62,9 @@ MIGRATIONS = [
     ("sessions", "lookups", "TEXT NOT NULL DEFAULT '[]'"),
     ("sessions", "marks", "TEXT NOT NULL DEFAULT '[]'"),
     ("sessions", "calib_jitter_px", "REAL"),
+    # Sentences the student found difficult, asked before the automatic
+    # result is shown (NULL = not answered). Unbiased labels for validation.
+    ("sessions", "self_marks", "TEXT"),
 ]
 
 SUMMARY_COLS = (
@@ -164,6 +167,7 @@ def get_session(session_id: str) -> dict | None:
     d = dict(r)
     for k in ("flags", "metrics", "answers", "layout", "samples", "lookups", "marks"):
         d[k] = json.loads(d[k])
+    d["self_marks"] = json.loads(d["self_marks"]) if d.get("self_marks") is not None else None
     return d
 
 
@@ -198,6 +202,29 @@ def set_levels(levels: dict) -> None:
             "INSERT INTO settings(key, value) VALUES ('levels', ?) "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (json.dumps(levels),),
+        )
+
+
+def set_self_marks(session_id: str, marks: list[int]) -> bool:
+    """Record the self-report and start the editable marks from it."""
+    with connect() as c:
+        return c.execute(
+            "UPDATE sessions SET self_marks = ?, marks = ? WHERE id = ?",
+            (json.dumps(marks), json.dumps(marks), session_id),
+        ).rowcount > 0
+
+
+def get_setting(key: str, default=None):
+    with connect() as c:
+        r = c.execute("SELECT value FROM settings WHERE key = ?", (key,)).fetchone()
+    return json.loads(r["value"]) if r else default
+
+
+def set_setting(key: str, value) -> None:
+    with connect() as c:
+        c.execute(
+            "INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (key, json.dumps(value)),
         )
 
 

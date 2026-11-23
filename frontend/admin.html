@@ -99,6 +99,58 @@
         </div>
       </section>
 
+      <section class="validation" id="validation">
+        <div class="table-head">
+          <div>
+            <h2>판정 검증</h2>
+            <p class="muted" style="margin:6px 0 0;font-size:14px">학생이 결과를 보기 전에 직접 고른 '어려웠던 문장'과 시선 자동 감지가 얼마나 겹치는지 봐요. 마우스 데모 세션은 빼요.</p>
+          </div>
+          <div class="val-actions">
+            <button class="btn btn-sm" type="button" id="valRefresh">새로고침</button>
+            <button class="btn btn-sm btn-soft" type="button" id="valCsv">CSV</button>
+          </div>
+        </div>
+        <dl class="val-kpis" id="valKpis"></dl>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>보정 오차</th><th class="r">세션</th><th>정밀도 (95% CI)</th><th>재현율 (95% CI)</th><th class="r">F1</th><th class="r">'어려움 없음' 세션의 표시·감점</th></tr></thead>
+            <tbody id="valBuckets"></tbody>
+          </table>
+        </div>
+        <p class="hint" id="valNote"></p>
+
+        <div class="table-head" style="margin-top:28px">
+          <div>
+            <h3>기준 후보 비교</h3>
+            <p class="muted" style="margin:6px 0 0;font-size:14px">저장된 시선 데이터로 여러 기준을 다시 돌려 학생 표시와 가장 잘 맞는 값을 찾아요. F1이 높고, 학생이 '어려움 없음'이라고 한 세션에 붙는 표시가 적은 순서예요.</p>
+          </div>
+          <button class="btn btn-sm btn-primary" type="button" id="whatifBtn">후보 비교 실행</button>
+        </div>
+        <div class="table-wrap" id="whatifWrap" hidden>
+          <table class="table">
+            <thead><tr><th></th><th class="r">느린 문장 배수</th><th class="r">되돌아간 줄 수</th><th class="r">머문 시간</th><th class="r">F1</th><th class="r">정밀도</th><th class="r">재현율</th><th class="r">'어려움 없음' 표시</th><th></th></tr></thead>
+            <tbody id="whatifRows"></tbody>
+          </table>
+        </div>
+
+        <details class="params" id="paramsBox">
+          <summary>판정 기준 직접 보기·바꾸기</summary>
+          <form id="paramsForm">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>기준</th><th class="r">기본값</th><th class="r">현재</th></tr></thead>
+                <tbody id="paramRows"></tbody>
+              </table>
+            </div>
+            <div class="params-actions">
+              <span class="error-text" id="paramsError" hidden></span>
+              <button class="btn btn-sm btn-ghost" type="button" id="paramsReset">모두 기본값으로</button>
+              <button class="btn btn-sm btn-primary" type="submit">저장하고 다시 분석</button>
+            </div>
+          </form>
+        </details>
+      </section>
+
       <section class="articles">
         <div class="table-head">
           <div>
