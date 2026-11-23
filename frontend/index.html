@@ -38,7 +38,8 @@
       <li data-step="calibrate"><b>2</b>시선 보정</li>
       <li data-step="read"><b>3</b>읽기</li>
       <li data-step="quiz"><b>4</b>퀴즈</li>
-      <li data-step="results"><b>5</b>결과</li>
+      <li data-step="reflect"><b>5</b>돌아보기</li>
+      <li data-step="results"><b>6</b>결과</li>
     </ol>
     <span class="chip" id="modeChip" hidden></span>
     <a class="btn btn-sm top-admin" href="/admin">교사용 로그인</a>
@@ -223,10 +224,22 @@
     </div>
 
     <!-- ============ 5. Results summary ============ -->
+    <section class="app-view reflect" data-view="reflect">
+      <span class="eyebrow">Self-check</span>
+      <h2>어려웠던 문장을 골라 주세요</h2>
+      <p>읽으면서 막혔거나 이해가 잘 안 된 문장을 눌러 표시해 주세요. 정답은 없고, 점수에도 영향을 주지 않아요. 시선 분석 결과는 다음 화면에서 보여 드려요.</p>
+      <div class="reflect-bar">
+        <span class="hint" id="reflectCount">표시한 문장 0개</span>
+        <div class="spacer"></div>
+        <button class="btn" type="button" id="reflectNone">어려운 문장 없었어요</button>
+        <button class="btn btn-primary" type="button" id="reflectDone">결과 보기</button>
+      </div>
+    </section>
+
     <section class="app-view results" data-view="results" id="resultsTop"></section>
 
     <!-- ============ 3 & 5. Reader ============ -->
-    <div class="app-view reader" data-view="read results">
+    <div class="app-view reader" data-view="read reflect results">
       <div class="reader-bar" data-view="read">
         <span class="rec"><span class="dot live"></span>시선 기록 중</span>
         <span class="timer" id="timer">00:00</span>

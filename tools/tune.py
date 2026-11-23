@@ -23,7 +23,7 @@ from backend.sim import NoiseModel, Truth, layout_text, pick_truth, read, to_sam
 
 ROOT = Path(__file__).resolve().parent.parent
 ARTICLE = json.loads((ROOT / "backend/content/schwarze-katze.json").read_text(encoding="utf-8"))
-LAYOUT = layout_text(ARTICLE["title"], [ARTICLE["lead"], *ARTICLE["paragraphs"]])
+LAYOUT = layout_text(ARTICLE["title"], ARTICLE["paragraphs"], lead=ARTICLE["lead"])
 
 NOISE_GRID = [
     ("ideal", NoiseModel(bias_px=0, jitter_px=10, drift_px_per_min=0, dropout_rate=0)),
