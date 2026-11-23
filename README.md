@@ -57,10 +57,10 @@ flowchart LR
     API --> Ana["analysis.py<br/>I-DT · 문단 · 문장 난이도 · 점수"]
     Tr["translate.py<br/>Claude 또는 MyMemory"] --> DB
     DWI["dw.py<br/>DW 레슨 가져오기"] --> DB
-    Ana --> DB[(SQLite)]
+    Ana --> DB[(SQLite 또는<br/>Supabase Postgres)]
     Ana --> Hub[WebSocket hub]
   end
-  Hub -->|실시간 갱신| Admin[교사용 대시보드]
+  Hub -->|실시간 갱신 + 20초마다 새로고침| Admin[교사용 대시보드]
   Admin -->|레슨 URL| DWI
 ```
 
@@ -120,27 +120,48 @@ ADMIN_TOKEN=change-me uvicorn backend.main:app --reload --port 8000
 | 이름 | 기본값 | 설명 |
 |---|---|---|
 | `ADMIN_TOKEN` | (임의 생성) | 대시보드 로그인 토큰. 비우면 서버를 켤 때마다 새로 만들어 로그에 출력합니다. |
-| `DB_PATH` | `data/lesen.db` | SQLite 파일 경로 |
+| `DATABASE_URL` | (없음) | Postgres 연결 문자열(Supabase 등). 설정하면 SQLite 대신 씁니다. 표는 처음 요청할 때 자동으로 만듭니다. |
+| `DB_PATH` | `data/lesen.db` | `DATABASE_URL`이 없을 때 쓰는 SQLite 파일 경로 |
+| `DB_POOL_SIZE` | `4` | Postgres 연결 풀 크기 (서버 인스턴스마다) |
 | `ALLOWED_ORIGINS` | (없음) | 다른 도메인에서 API를 부를 때 허용할 origin 목록 (쉼표로 구분) |
 | `ANTHROPIC_API_KEY` | (없음) | 설정하면 단어 뜻풀이에 Claude를 씁니다. 문장 문맥을 보고 기본형(`ging` → `gehen`), 명사의 관사, 품사까지 알려 줍니다. 없으면 무료 MyMemory로 단어만 번역합니다(문맥 미반영). |
 | `LESEN_TRANSLATE_MODEL` | `claude-opus-5-5` | 뜻풀이에 쓸 Claude 모델 |
 
 뜻풀이 결과는 데이터베이스에 캐시되므로 같은 단어·문장·언어 조합은 한 번만 번역됩니다. Claude 호출은 짧은 구조화 출력(JSON 스키마)과 낮은 effort를 쓰고, 요청이 거부되면 다른 모델로 자동 재시도하는 서버 측 fallback을 켜 두었습니다.
 
-### 배포 (Render 예시)
+### 배포 (Vercel + Supabase)
 
-- Build: `pip install -r backend/requirements.txt`
-- Start: `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`
-- 환경 변수 `ADMIN_TOKEN`을 설정합니다. 문맥 기반 뜻풀이를 쓰려면 `ANTHROPIC_API_KEY`도 설정합니다.
-- 무료 인스턴스의 디스크는 재배포 때 초기화됩니다. 데이터를 계속 보관하려면 Persistent Disk를 붙이고 `DB_PATH`를 그 경로로 지정하세요.
+FastAPI 앱 전체를 Vercel의 Python 함수 하나로 올리고, 데이터는 Supabase Postgres에 저장합니다. `pyproject.toml`의 `[tool.vercel] entrypoint`가 `backend.main:app`을 가리키고, `/static` 파일은 빌드 때 Vercel CDN으로 올라갑니다. `.vercelignore`로 테스트·문서·도구는 배포 묶음에서 뺐습니다.
+
+1. **Supabase**
+   1. 새 프로젝트를 만듭니다. 리전은 Vercel 함수 리전과 가까운 곳(기본값이 미국 동부라면 `us-east-1`)을 고릅니다.
+   2. 상단 **Connect**에서 **Transaction pooler** 연결 문자열(포트 `6543`)을 복사합니다. 서버리스 함수는 인스턴스가 자주 바뀌므로 직접 연결(5432)보다 풀러가 맞습니다. `[YOUR-PASSWORD]` 자리에 DB 비밀번호를 넣습니다.
+   3. 표는 앱이 처음 요청을 받을 때 자동으로 만들고, 모든 표에 RLS를 켭니다. 앱은 표 소유자로 접속하므로 영향이 없고, Supabase의 공개 Data API로는 학생 데이터를 읽을 수 없습니다.
+2. **Vercel**
+   1. **Add New → Project**에서 이 GitHub 저장소를 가져옵니다. 프레임워크는 자동 감지에 맡기고 빌드 설정은 비워 둡니다.
+   2. **Environment Variables**에 넣습니다.
+      - `DATABASE_URL`: 위의 Supabase 연결 문자열
+      - `ADMIN_TOKEN`: 대시보드 로그인 토큰. 꼭 정해야 합니다. 비우면 인스턴스마다 다른 토큰이 생겨 로그인이 안 됩니다.
+      - `ANTHROPIC_API_KEY`: 선택. 문맥 기반 뜻풀이
+   3. Deploy를 누르면 `https://<프로젝트>.vercel.app`에서 학생 화면, `/admin`에서 대시보드가 열립니다. PR마다 미리보기 주소도 생깁니다.
+3. **데모 데이터**(선택): 로컬에서 `DATABASE_URL`을 같은 값으로 두고 `python -m tools.seed_demo 24`를 실행하면 판정 검증 화면을 채울 가상 세션이 들어갑니다. 가상 세션은 사용자 ID가 `sim-`으로 시작해 실제 학생과 섞이지 않습니다.
+
+운영할 때 알아 둘 점:
+
+- **실시간 갱신**: Vercel에서는 서버 인스턴스가 여러 개일 수 있어, 다른 인스턴스에 저장된 세션은 WebSocket으로 바로 오지 않을 수 있습니다. 그래서 대시보드는 20초마다 최신 현황을 다시 받고, WebSocket이 계속 실패하면 HTTP로 20초마다 불러옵니다(상단 표시가 "20초마다 갱신"으로 바뀝니다).
+- **Supabase 무료 프로젝트**는 일주일 동안 활동이 적으면 일시 정지됩니다. 정지되면 대시보드에서 다시 켜면 되고 데이터는 남아 있습니다.
+- `DATABASE_URL` 없이 배포하면 SQLite를 `/tmp`에 만들어 동작은 하지만, 인스턴스가 바뀌면 데이터가 사라집니다(서버 로그에 경고가 남습니다).
+- Vercel 외의 서버(Fly.io, Railway, 자체 서버 등)에서는 `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`로 실행하면 됩니다. 환경 변수는 같습니다.
 
 ## 테스트
 
-PR과 `main` 푸시마다 GitHub Actions(`.github/workflows/ci.yml`)가 pytest를 돌린 뒤, 빈 데이터베이스로 서버를 띄워 아래 E2E 시나리오 두 개를 실행합니다. 스크린샷은 실행 결과의 `e2e-screenshots` 아티팩트로 7일간 받을 수 있습니다.
+PR과 `main` 푸시마다 GitHub Actions(`.github/workflows/ci.yml`)가 pytest를 SQLite와 Postgres에서 한 번씩 돌린 뒤, 빈 데이터베이스로 서버를 띄워 아래 E2E 시나리오 두 개를 SQLite와 Postgres에서 각각 실행합니다. 스크린샷은 실행 결과의 `e2e-screenshots-*` 아티팩트로 7일간 받을 수 있습니다.
 
 ```bash
 pip install -r requirements-dev.txt
 pytest
+# 같은 테스트를 Postgres에서 (테스트마다 모든 표를 지우므로 빈 테스트용 DB를 쓰세요)
+TEST_DATABASE_URL=postgresql://postgres@localhost:5432/lesen_test pytest
 ```
 
 E2E 시나리오(Playwright, 서버 실행 중):
@@ -166,7 +187,7 @@ backend/
   dw.py            DW Deutsch lernen 레슨 가져오기
   translate.py     단어 뜻풀이 (Claude / MyMemory)
   content/         기본 지문·퀴즈 (JSON)
-  db.py            SQLite 저장소
+  db.py            저장소 (SQLite, DATABASE_URL이 있으면 Postgres)
 frontend/
   index.html       학생 화면
   admin.html       교사용 대시보드
@@ -175,7 +196,8 @@ frontend/
 tools/tune.py      판정 기준 측정·탐색 (docs/tuning.md)
 tools/compare.py   실제 세션의 판정 검증 보고서
 tools/seed_demo.py 판정 검증 화면을 시험할 가상 세션 만들기
-tests/             pytest (분석·난이도·잡음·DW·API), e2e (Playwright)
+tests/             pytest (분석·난이도·잡음·DW·API·배포 설정), e2e (Playwright)
+pyproject.toml     Vercel 배포 설정 (의존성은 backend/requirements.txt와 같게 유지)
 ```
 
 ## 수업 프로젝트에서 바뀐 점
@@ -187,7 +209,7 @@ tests/             pytest (분석·난이도·잡음·DW·API), e2e (Playwright)
 | 서버에서 YOLOv8-Pose로 '시선'을 구해 WebGazer와 가중 평균 | 서버 추론 제거, 브라우저에서만 추정 | YOLO 출력은 두 눈 키포인트의 중점, 즉 **머리 위치**였습니다. 이를 섞으면 오히려 정확도가 떨어졌고, 초당 15장의 프레임을 서버로 보내는 비용도 들었습니다. |
 | 60×100 격자 중 시선이 닿은 칸 비율로 점수 계산 | 문단별 체류 시간 / 기준 읽기 시간 | 이전 방식은 화면을 아무렇게나 훑을수록 점수가 높았습니다. |
 | 목표점 50px 안에 들어와야만 보정 샘플을 수집 | 무조건 수집 후 중앙값 사용, 별도 검증 점으로 오차 측정 | 이전 방식은 오차가 크면 끝나지 않았고, 이미 맞는 샘플만 모여 보정 효과가 없었습니다. |
-| 메모리 저장 | SQLite | 서버를 재시작하면 데이터가 사라졌습니다. |
+| 메모리 저장 | SQLite (로컬) / Supabase Postgres (배포) | 서버를 재시작하면 데이터가 사라졌습니다. |
 | 관리자 토큰을 README에 공개, 학생별 내보내기는 인증 없음 | 환경 변수 토큰, 모든 관리 API 인증 | 보안 |
 | `innerHTML`로 사용자 ID 출력 | DOM API로 텍스트만 삽입, ID 형식 검증 | XSS 방지 |
 | 퀴즈 1문항 (0점 또는 100점) | 5문항, 서버 채점 | 변별력 |

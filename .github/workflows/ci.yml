@@ -14,8 +14,18 @@ concurrency:
 
 jobs:
   unit:
-    name: Unit tests (pytest)
+    name: Unit tests (SQLite + Postgres)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lesen
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -26,15 +36,35 @@ jobs:
             backend/requirements.txt
             requirements-dev.txt
       - run: pip install -r backend/requirements.txt -r requirements-dev.txt
-      - run: pytest -q
+      - name: pytest (SQLite)
+        run: pytest -q
+      - name: pytest (Postgres)
+        run: pytest -q
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/lesen
 
   e2e:
-    name: End-to-end (Playwright)
+    name: End-to-end (${{ matrix.db }})
     runs-on: ubuntu-latest
     needs: unit
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [sqlite, postgres]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lesen
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       ADMIN_TOKEN: ci-token
       DB_PATH: ${{ github.workspace }}/ci-data/lesen.db
+      DATABASE_URL: ${{ matrix.db == 'postgres' && 'postgresql://postgres:postgres@127.0.0.1:5432/lesen' || '' }}
       BASE: http://127.0.0.1:8000
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +97,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: e2e-screenshots
+          name: e2e-screenshots-${{ matrix.db }}
           path: e2e-out/
           retention-days: 7
