@@ -219,3 +219,14 @@ def test_mymemory_junk_is_filtered():
             "matches": [{"translation": "''not used''", "match": 0.9}, {"translation": "사람들", "match": 0.8}]}
     assert translate.pick_mymemory("man", "ko", data) == "사람들"
     assert translate.pick_mymemory("man", "ko", {"responseData": {"translatedText": "MAN"}, "matches": []}) is None
+
+
+def test_reanalyze_endpoint(client):
+    body = session_body(user="re")
+    body["calibration_error_px"] = 200
+    body["calibration_jitter_px"] = 60
+    body["mode"] = "webcam"
+    client.post("/api/sessions", json=body)
+    assert client.post("/api/admin/reanalyze").status_code == 401
+    r = client.post("/api/admin/reanalyze", headers=AUTH)
+    assert r.status_code == 200 and r.json()["changed"] == []  # same params -> same scores
