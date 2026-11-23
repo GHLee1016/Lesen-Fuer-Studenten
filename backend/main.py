@@ -39,6 +39,8 @@ async def lifespan(_: FastAPI):
     db.init()
     if config.ADMIN_TOKEN_GENERATED:
         log.warning("ADMIN_TOKEN is not set. Generated a temporary admin token: %s", config.ADMIN_TOKEN)
+    if config.ON_VERCEL and not config.DATABASE_URL:
+        log.warning("DATABASE_URL is not set: using SQLite in /tmp, which is lost when the instance stops.")
     yield
 
 
@@ -550,7 +552,10 @@ async def admin_ws(ws: WebSocket):
     try:
         await ws.send_json({"type": "overview", "data": await run_in_threadpool(overview)})
         while True:
-            await ws.receive_text()  # pings; content ignored
+            # "refresh" asks for the current overview: with several server
+            # instances, sessions saved elsewhere are not broadcast here.
+            if await ws.receive_text() == "refresh":
+                await ws.send_json({"type": "overview", "data": await run_in_threadpool(overview)})
     except WebSocketDisconnect:
         pass
     finally:

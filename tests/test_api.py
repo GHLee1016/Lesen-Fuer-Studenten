@@ -92,6 +92,9 @@ def test_admin_ws_auth(client):
     with client.websocket_connect("/api/admin/ws") as ws:
         ws.send_json({"type": "auth", "token": TOKEN})
         assert ws.receive_json()["type"] == "overview"
+        # periodic refresh (sessions saved on another server instance)
+        ws.send_text("refresh")
+        assert ws.receive_json()["type"] == "overview"
     with client.websocket_connect("/api/admin/ws") as ws:
         ws.send_json({"type": "auth", "token": "nope"})
         with pytest.raises(Exception):
