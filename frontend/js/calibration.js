@@ -83,6 +83,7 @@ export class Calibration {
     this.panel.hidden = true;
     this.tracker.showPreview(false);
     this.tracker.matrix = null;
+    this._spreads = [];
     await this.tracker.resetModel?.();
 
     // 1. Train WebGazer's regression with clicks while looking at each dot.
@@ -127,6 +128,7 @@ export class Calibration {
       matrix: useMatrix ? matrix : null,
       errorPx: Math.round(useMatrix ? corrErr : rawErr),
       rawErrorPx: Math.round(rawErr),
+      jitterPx: Math.round(median(this._spreads)),
       validPoints: valRaw.length,
     });
   }
@@ -166,7 +168,14 @@ export class Calibration {
     off();
     dot.remove();
     await sleep(150);
-    return xs.length >= 5 ? [median(xs), median(ys)] : null;
+    if (xs.length < 5) return null;
+    const mx = median(xs);
+    const my = median(ys);
+    // Frame-to-frame spread while the eyes rest on one dot: a robust
+    // (MAD-based) estimate of the tracker's jitter.
+    const mad = (v, m) => 1.4826 * median(v.map((a) => Math.abs(a - m)));
+    this._spreads.push((mad(xs, mx) + mad(ys, my)) / 2);
+    return [mx, my];
   }
 
   _failed() {
@@ -192,7 +201,7 @@ export class Calibration {
       ),
       h("p", {}, q.note),
       res.matrix
-        ? h("p", { class: "hint" }, `보정 행렬 적용 전 ${res.rawErrorPx}px → 적용 후 ${res.errorPx}px (검증 점 ${res.validPoints}개)`)
+        ? h("p", { class: "hint" }, `보정 행렬 적용 전 ${res.rawErrorPx}px → 적용 후 ${res.errorPx}px · 흔들림 ±${res.jitterPx}px (검증 점 ${res.validPoints}개)`)
         : h("p", { class: "hint" }, `보정 행렬이 오차를 줄이지 못해 적용하지 않았어요 (검증 점 ${res.validPoints}개)`),
       h("div", { class: "actions" }, retry, accept),
     );

@@ -384,6 +384,7 @@ async function submit(answers) {
         started_at: st.startedAt,
         duration_ms: st.durationMs,
         calibration_error_px: st.calib?.errorPx ?? null,
+        calibration_jitter_px: st.calib?.jitterPx ?? null,
         layout: st.layout.layout,
         aois: st.layout.aois,
         words: st.layout.words,
@@ -540,7 +541,14 @@ function hardSection(diff) {
     h("h3", {}, `어려웠던 구간 ${list.length ? `· ${list.length}문장` : ""}`),
     diff.penalty
       ? h("p", { class: "penalty-note" }, `자동으로 찾은 구간 때문에 시선 점수에서 ${diff.penalty}점이 깎였어요. 직접 표시하거나 해제해도 점수는 바뀌지 않아요.`)
-      : h("p", { class: "penalty-note" }, "시선으로 찾은 어려운 구간이 없어요. 어려웠던 문장이 있다면 아래 지문에서 문장을 눌러 표시해 보세요."),
+      : diff.raw_penalty && diff.reliability === 0
+        ? null
+        : h("p", { class: "penalty-note" }, "시선으로 찾은 어려운 구간이 없어요. 어려웠던 문장이 있다면 아래 지문에서 문장을 눌러 표시해 보세요."),
+    diff.reliability != null && diff.reliability < 1 && diff.raw_penalty > 0
+      ? h("p", { class: "penalty-note" }, diff.reliability === 0
+          ? "보정 오차가 커서 어려운 구간은 참고로만 표시하고 감점하지 않았어요. 다음에는 밝은 곳에서 다시 보정해 보세요."
+          : `보정 오차를 고려해 감점을 ${Math.round((1 - diff.reliability) * 100)}% 줄였어요.`)
+      : null,
     list.length
       ? h("ul", { class: "hard-list" },
           list.map((s) => {
@@ -555,6 +563,9 @@ function hardSection(diff) {
             );
           }),
         )
+      : null,
+    diff.words_reliable === false && st.mode === "webcam"
+      ? h("p", { class: "hint", style: { margin: 0 } }, "보정 오차가 한 줄의 절반보다 커서 단어 단위 분석은 하지 않았어요.")
       : null,
     diff.difficult_words.length
       ? h("div", {}, h("p", { class: "hint", style: { margin: "4px 0 8px" } }, "오래 머문 단어 (시선 정확도 때문에 후보로만 봐 주세요)"),

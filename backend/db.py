@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS vocab (
 MIGRATIONS = [
     ("sessions", "lookups", "TEXT NOT NULL DEFAULT '[]'"),
     ("sessions", "marks", "TEXT NOT NULL DEFAULT '[]'"),
+    ("sessions", "calib_jitter_px", "REAL"),
 ]
 
 SUMMARY_COLS = (
@@ -105,14 +106,14 @@ def insert_session(s: dict) -> None:
     with connect() as c:
         c.execute(
             "INSERT INTO sessions (id, user_id, article_id, mode, started_at, duration_ms, calib_error_px, "
-            "gaze_score, quiz_score, final_score, flags, metrics, answers, layout, samples, created_at, lookups, marks) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "gaze_score, quiz_score, final_score, flags, metrics, answers, layout, samples, created_at, lookups, marks, calib_jitter_px) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 s["id"], s["user_id"], s["article_id"], s["mode"], s["started_at"], s["duration_ms"],
                 s["calib_error_px"], s["gaze_score"], s["quiz_score"], s["final_score"],
                 json.dumps(s["flags"]), json.dumps(s["metrics"]), json.dumps(s["answers"]),
                 json.dumps(s["layout"]), json.dumps(s["samples"]), int(time.time() * 1000),
-                json.dumps(s.get("lookups", [])), json.dumps(s.get("marks", [])),
+                json.dumps(s.get("lookups", [])), json.dumps(s.get("marks", [])), s.get("calib_jitter_px"),
             ),
         )
 
@@ -274,3 +275,16 @@ def list_vocab(user_id: str) -> list[dict]:
 def delete_vocab(user_id: str, vocab_id: int) -> bool:
     with connect() as c:
         return c.execute("DELETE FROM vocab WHERE id = ? AND user_id = ?", (vocab_id, user_id)).rowcount > 0
+
+
+def all_session_ids() -> list[str]:
+    with connect() as c:
+        return [r["id"] for r in c.execute("SELECT id FROM sessions ORDER BY rowid")]
+
+
+def update_scores(session_id: str, gaze: int, final: int, flags: list, metrics: dict) -> None:
+    with connect() as c:
+        c.execute(
+            "UPDATE sessions SET gaze_score = ?, final_score = ?, flags = ?, metrics = ? WHERE id = ?",
+            (gaze, final, json.dumps(flags), json.dumps(metrics), session_id),
+        )
