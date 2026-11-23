@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from . import analysis, config, db, dw, translate
+from . import params as params_mod
 from .content import get_article, grade_quiz, load_articles, public_article, summary
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -238,7 +239,7 @@ def _evaluate(body: SessionIn, article: dict) -> dict:
     samples = [analysis.Sample(t, x, y) for t, x, y in body.samples]
     aois = [analysis.AOI(a.id, a.x, a.y, a.w, a.h, a.words) for a in body.aois]
     words = [analysis.Word(*w) for w in body.words]
-    params = analysis.adapt(analysis.AnalysisParams(), body.calibration_error_px, body.calibration_jitter_px)
+    params = analysis.adapt(params_mod.current(), body.calibration_error_px, body.calibration_jitter_px)
     metrics = analysis.analyze(samples, aois, body.duration_ms, body.layout.line_height, params, words=words or None)
     gaze = analysis.gaze_score(metrics)
     quiz, feedback = grade_quiz(article, body.answers)
@@ -262,7 +263,8 @@ def _evaluate(body: SessionIn, article: dict) -> dict:
         "layout": {**body.layout.model_dump(), "aois": [a.model_dump() for a in body.aois], "words": [list(w) for w in body.words]},
         "samples": [list(s) for s in body.samples],
         "lookups": [{"t": l.get("t"), "i": l.get("i"), "word": str(l.get("word", ""))[:80]} for l in body.lookups],
-        "marks": (metrics.get("difficulty") or {}).get("difficult_sentences", []),
+        # Filled by the student's self-report; automatic flags stay separate.
+        "marks": [],
         "quiz_feedback": feedback,
     }
 
@@ -291,6 +293,15 @@ async def submit_session(body: SessionIn):
 
 class MarksIn(BaseModel):
     sentences: list[int] = Field(max_length=2000)
+
+
+@app.put("/api/sessions/{session_id}/self-marks")
+async def set_self_marks(session_id: str, body: MarksIn):
+    """Sentences the student found difficult, reported before seeing the
+    automatic result. Used to validate the detection."""
+    if not db.set_self_marks(session_id, sorted(set(body.sentences))):
+        raise HTTPException(status_code=404, detail="Unknown session")
+    return {"ok": True}
 
 
 @app.put("/api/sessions/{session_id}/marks")
@@ -378,6 +389,68 @@ async def admin_reanalyze():
     changed = await run_in_threadpool(reanalyze_all)
     await admin_hub.broadcast_overview()
     return {"changed": changed}
+
+
+# ----------------------------------------------------- validation/params ----
+
+
+@app.get("/api/admin/params", dependencies=[Depends(require_admin)])
+def admin_params():
+    return params_mod.describe()
+
+
+class ParamsIn(BaseModel):
+    overrides: dict[str, float]
+    reanalyze: bool = True
+
+
+@app.put("/api/admin/params", dependencies=[Depends(require_admin)])
+async def admin_set_params(body: ParamsIn):
+    try:
+        saved = params_mod.save(body.overrides)
+    except params_mod.InvalidParams as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    changed = []
+    if body.reanalyze:
+        from .reanalyze import reanalyze_all
+
+        changed = await run_in_threadpool(reanalyze_all)
+        await admin_hub.broadcast_overview()
+    return {"overrides": saved, "changed": changed}
+
+
+@app.get("/api/admin/validation", dependencies=[Depends(require_admin)])
+async def admin_validation(include_mouse: bool = False):
+    from . import validation
+
+    sessions = await run_in_threadpool(validation.labelled_sessions, include_mouse)
+    return validation.summarize(sessions)
+
+
+@app.post("/api/admin/validation/whatif", dependencies=[Depends(require_admin)])
+async def admin_whatif(include_mouse: bool = False):
+    from . import validation
+
+    sessions = await run_in_threadpool(validation.labelled_sessions, include_mouse)
+    if not sessions:
+        return {"candidates": [], "sessions": 0}
+    return {"candidates": await run_in_threadpool(validation.whatif, sessions), "sessions": len(sessions)}
+
+
+@app.get("/api/admin/validation.csv", dependencies=[Depends(require_admin)])
+def admin_validation_csv(include_mouse: bool = False):
+    from . import validation
+
+    rows = validation.summarize(validation.labelled_sessions(include_mouse))["sessions"]
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(["session", "user_id", "article_id", "mode", "calib_error_px", "bucket", "auto", "self_report", "after_results", "tp", "fp", "fn", "penalty", "raw_penalty"])
+    for r in rows:
+        w.writerow([r["id"], r["user_id"], r["article_id"], r["mode"], r["calib_error_px"], r["bucket"],
+                    " ".join(map(str, r["auto"])), " ".join(map(str, r["label"])), " ".join(map(str, r["final_marks"])),
+                    r["tp"], r["fp"], r["fn"], r["penalty"], r["raw_penalty"]])
+    return Response(buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="validation.csv"'})
 
 
 @app.get("/api/admin/vocab/{user_id}.csv", dependencies=[Depends(require_admin)])
