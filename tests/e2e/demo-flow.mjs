@@ -94,6 +94,14 @@ try {
   console.log("glosses:", lookedUp.join(" | "));
   await page.screenshot({ path: `${OUT}/3-quiz.png`, fullPage: true });
   await page.click("#submitQuiz");
+
+  // Self-check: mark two sentences before the automatic result is shown
+  await page.waitForSelector("#reflectDone", { state: "visible" });
+  await page.click('.sent[data-s="2"]');
+  await page.click('.sent[data-s="9"]');
+  console.log("self-check:", await page.textContent("#reflectCount"));
+  await page.screenshot({ path: `${OUT}/3b-reflect.png` });
+  await page.click("#reflectDone");
   await page.waitForSelector(".report-head");
   await sleep(300);
   console.log("difficulty:", await page.$eval("#hardSection", (e) => e.innerText.replace(/\s+/g, " ").slice(0, 300)));

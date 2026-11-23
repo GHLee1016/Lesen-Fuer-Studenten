@@ -38,7 +38,15 @@ TOP = 52.0
 PARA_GAP = 34.0
 TITLE_LINE_H = 54.0
 
-SENT_END = re.compile(r"[.!?…][\"“”»«’)]*$")
+# Sentence splitting mirrors frontend/js/article.js so indices line up.
+SENT_END = re.compile(r"[.!?…][\"“”»«’‘)\]]*$")
+SENT_START = re.compile(r"^[\"„“»«‘(\[]?[A-ZÄÖÜ0-9]")
+ORDINAL = re.compile(r"^\d+\.$")
+ABBR = {"z.", "B.", "z.B.", "bzw.", "ca.", "Dr.", "Prof.", "Nr.", "usw.", "etc.", "vgl.", "u.a.", "d.h.", "evtl.", "ggf.", "Hr.", "Fr.", "St.", "Mio.", "Mrd."}
+
+
+def ends_sentence(tok: str, nxt: str | None) -> bool:
+    return bool(SENT_END.search(tok)) and tok not in ABBR and not ORDINAL.match(tok) and (nxt is None or bool(SENT_START.match(nxt)))
 
 
 @dataclass
@@ -50,13 +58,16 @@ class Layout:
     line_height: float = LINE_H
 
 
-def layout_text(title: str, paragraphs: list[str]) -> Layout:
+def layout_text(title: str, paragraphs: list[str], lead: str | None = None) -> Layout:
     words: list[Word] = []
     texts: list[str] = []
     aois: list[AOI] = []
     sentence_words: list[list[int]] = []
     y = TOP
-    blocks = [("title", title, TITLE_LINE_H, CHAR_W * 1.75)] + [(f"p{i + 1}", p, LINE_H, CHAR_W) for i, p in enumerate(paragraphs)]
+    blocks = [("title", title, TITLE_LINE_H, CHAR_W * 1.75)]
+    if lead:
+        blocks.append(("lead", lead, LINE_H, CHAR_W))
+    blocks += [(f"p{i + 1}", p, LINE_H, CHAR_W) for i, p in enumerate(paragraphs)]
     for aoi_id, text, lh, cw in blocks:
         tokens = text.split()
         x = LEFT
@@ -72,7 +83,7 @@ def layout_text(title: str, paragraphs: list[str]) -> Layout:
             texts.append(tok)
             sentence.append(len(words) - 1)
             x += w + SPACE_W
-            if SENT_END.search(tok) or k == len(tokens) - 1:
+            if ends_sentence(tok, tokens[k + 1] if k + 1 < len(tokens) else None) or k == len(tokens) - 1:
                 sentence_words.append(sentence)
                 sentence = []
         y += lh

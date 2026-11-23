@@ -11,16 +11,16 @@ from __future__ import annotations
 
 import sys
 
-from . import analysis, config, db
+from . import analysis, config, db, params as params_mod
 from .content import get_article
 
 
-def evaluate_stored(sess: dict, article: dict | None) -> tuple[int, int, list, dict]:
+def evaluate_stored(sess: dict, article: dict | None, base: analysis.AnalysisParams | None = None) -> tuple[int, int, list, dict]:
     layout = sess["layout"]
     samples = [analysis.Sample(*s) for s in sess["samples"]]
     aois = [analysis.AOI(a["id"], a["x"], a["y"], a["w"], a["h"], a["words"]) for a in layout["aois"]]
     words = [analysis.Word(*w) for w in layout.get("words", [])]
-    params = analysis.adapt(analysis.AnalysisParams(), sess.get("calib_error_px"), sess.get("calib_jitter_px"))
+    params = analysis.adapt(base or params_mod.current(), sess.get("calib_error_px"), sess.get("calib_jitter_px"))
     metrics = analysis.analyze(samples, aois, sess["duration_ms"], layout["line_height"], params, words=words or None)
     gaze = analysis.gaze_score(metrics)
     has_quiz = bool(article["quiz"]) if article else sess["quiz_score"] is not None

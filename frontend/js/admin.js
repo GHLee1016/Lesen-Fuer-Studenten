@@ -58,6 +58,8 @@ async function login(t) {
   render();
   connectWs();
   loadArticles();
+  loadValidation();
+  loadParams();
 }
 
 function logout(msg) {
@@ -178,7 +180,7 @@ function render() {
     ...(rows.length
       ? rows.map((u) =>
           h("tr", { dataset: { user: u.user_id }, tabindex: "0", onclick: () => openDrawer(u.user_id), onkeydown: (e) => e.key === "Enter" && openDrawer(u.user_id) },
-            h("td", {}, h("span", { class: "name" }, u.user_id, u.flags.length ? warnIcon() : null)),
+            h("td", {}, h("span", { class: "name" }, u.user_id, u.mode === "simulated" ? h("span", { class: "chip", title: "시뮬레이션으로 만든 세션" }, "시뮬레이션") : null, u.flags.length ? warnIcon() : null)),
             h("td", {}, h("span", { class: "lvl" }, sq(LEVEL_META[u.level].color), LEVEL_META[u.level].label)),
             h("td", { class: "r" }, h("span", { class: "final" }, u.final_score)),
             h("td", { class: "r" }, u.gaze_score),
@@ -253,6 +255,145 @@ $("#importForm").addEventListener("submit", async (e) => {
     btn.disabled = false;
     btn.textContent = "가져오기";
   }
+});
+
+// ------------------------------------------------------- validation ----
+
+const pctOf = (v) => (v == null ? "–" : `${Math.round(v * 100)}%`);
+const ciOf = (c) => (c ? h("span", { class: "ci" }, `${Math.round(c[0] * 100)}–${Math.round(c[1] * 100)}%`) : null);
+
+async function loadValidation() {
+  let rep;
+  try {
+    rep = await (await api("/api/admin/validation")).json();
+  } catch (err) {
+    if (err.message !== "unauthorized") toast("판정 검증 데이터를 불러오지 못했어요.");
+    return;
+  }
+  const o = rep.overall;
+  $("#valKpis").replaceChildren(
+    vk(o.sessions, "자기 평가가 있는 세션"),
+    vk(pctOf(o.precision), "정밀도: 자동 감지 중 학생도 고른 비율", o.precision_ci),
+    vk(pctOf(o.recall), "재현율: 학생이 고른 것 중 자동 감지된 비율", o.recall_ci),
+    vk(o.no_report_penalty == null ? "–" : o.no_report_penalty, "'어려움 없음' 세션의 평균 감점(점)"),
+  );
+  $("#valBuckets").replaceChildren(
+    ...(rep.by_bucket.length
+      ? rep.by_bucket.map((b) =>
+          h("tr", {},
+            h("td", {}, b.bucket),
+            h("td", { class: "r" }, b.sessions),
+            h("td", {}, pctOf(b.precision), ciOf(b.precision_ci)),
+            h("td", {}, pctOf(b.recall), ciOf(b.recall_ci)),
+            h("td", { class: "r" }, b.f1 ?? "–"),
+            h("td", { class: "r" }, b.no_report_sessions ? `${b.no_report_flags}문장 · ${b.no_report_penalty}점 (${b.no_report_sessions}세션)` : "–"),
+          ))
+      : [h("tr", { class: "empty" }, h("td", { colspan: "6" }, "아직 자기 평가가 있는 세션이 없어요. 학생이 결과 전 '돌아보기' 단계를 마친 세션부터 쌓여요."))]),
+  );
+  const a = rep.after_results;
+  const notes = [];
+  if (o.sessions && o.sessions < 20) notes.push(`세션이 ${o.sessions}개뿐이라 신뢰구간이 넓어요. 20개 이상 모이면 비교가 믿을 만해져요.`);
+  if (o.sessions) notes.push(`결과를 본 뒤 학생들이 자동 표시를 받아들인 문장 ${a.added_from_auto}개, 자기 표시를 지운 문장 ${a.removed_own}개.`);
+  if (rep.sessions.some((r) => r.mode === "simulated")) notes.push("시뮬레이션 세션(sim-)이 포함돼 있어요.");
+  $("#valNote").textContent = notes.join(" ");
+}
+
+function vk(value, label, ci) {
+  return h("div", {}, h("dd", {}, value, ci ? h("small", {}, `${Math.round(ci[0] * 100)}–${Math.round(ci[1] * 100)}%`) : null), h("dt", {}, label));
+}
+
+$("#valRefresh").addEventListener("click", loadValidation);
+$("#valCsv").addEventListener("click", () => download("/api/admin/validation.csv", "validation.csv"));
+
+$("#whatifBtn").addEventListener("click", async () => {
+  const btn = $("#whatifBtn");
+  btn.disabled = true;
+  btn.textContent = "비교하는 중…";
+  try {
+    const { candidates, sessions } = await (await api("/api/admin/validation/whatif", { method: "POST" })).json();
+    if (!sessions) { toast("자기 평가가 있는 세션이 없어요."); return; }
+    $("#whatifWrap").hidden = false;
+    $("#whatifRows").replaceChildren(
+      ...candidates.map((c, i) =>
+        h("tr", { class: c.current ? "current" : null },
+          h("td", {}, c.current ? h("span", { class: "chip accent" }, "현재") : i === 0 ? h("span", { class: "chip good" }, "추천") : null),
+          h("td", { class: "r" }, `${c.params.slow_factor}×`),
+          h("td", { class: "r" }, `${c.params.return_min_lines}줄`),
+          h("td", { class: "r" }, `${Math.round(c.params.return_min_ms)}ms`),
+          h("td", { class: "r" }, c.f1 ?? "–"),
+          h("td", { class: "r" }, pctOf(c.precision)),
+          h("td", { class: "r" }, pctOf(c.recall)),
+          h("td", { class: "r" }, c.no_report_flags ?? "–"),
+          h("td", { class: "r" }, c.current ? null : h("button", { class: "btn btn-sm", type: "button", onclick: () => applyParams(c.params) }, "적용")),
+        ),
+      ),
+    );
+  } catch (err) {
+    if (err.message !== "unauthorized") toast("후보 비교를 실행하지 못했어요.");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "후보 비교 실행";
+  }
+});
+
+let paramInfo = null;
+
+async function loadParams() {
+  try {
+    paramInfo = await (await api("/api/admin/params")).json();
+  } catch {
+    return;
+  }
+  $("#paramRows").replaceChildren(
+    ...paramInfo.fields.map((f) =>
+      h("tr", { class: f.overridden ? "changed" : null },
+        h("td", {}, f.label),
+        h("td", { class: "r muted" }, f.default),
+        h("td", { class: "r" }, h("input", { class: "input num", type: "number", step: "any", min: String(f.min), max: String(f.max), name: f.key, value: String(f.value) })),
+      ),
+    ),
+  );
+}
+
+async function applyParams(changes) {
+  const overrides = { ...(paramInfo?.overrides || {}) };
+  for (const [k, v] of Object.entries(changes)) {
+    const def = paramInfo?.fields.find((f) => f.key === k)?.default;
+    if (def === v) delete overrides[k]; else overrides[k] = v;
+  }
+  if (!confirm("이 기준으로 바꾸고 저장된 모든 세션을 다시 분석할까요? 학생들의 점수가 바뀔 수 있어요.")) return false;
+  const errEl = $("#paramsError");
+  errEl.hidden = true;
+  try {
+    const res = await fetch("/api/admin/params", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ overrides, reanalyze: true }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(typeof body.detail === "string" ? body.detail : `HTTP ${res.status}`);
+    toast(`기준을 저장했어요. ${body.changed.length}개 세션의 점수가 바뀌었어요.`);
+    await Promise.all([loadParams(), loadValidation()]);
+    $("#whatifWrap").hidden = true;
+    return true;
+  } catch (err) {
+    errEl.textContent = err.message;
+    errEl.hidden = false;
+    $("#paramsBox").open = true;
+    return false;
+  }
+}
+
+$("#paramsForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const changes = {};
+  for (const input of $("#paramsForm").querySelectorAll("input[name]")) changes[input.name] = Number(input.value);
+  applyParams(changes);
+});
+$("#paramsReset").addEventListener("click", () => {
+  const changes = {};
+  for (const f of paramInfo?.fields || []) changes[f.key] = f.default;
+  applyParams(changes);
 });
 
 // ----------------------------------------------------------- levels ----
