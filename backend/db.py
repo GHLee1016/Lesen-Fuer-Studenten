@@ -1,5 +1,13 @@
+"""Storage. SQLite by default; Postgres (e.g. Supabase) when DATABASE_URL is set.
+
+The queries are written once with ``?`` placeholders in the subset of SQL that
+both engines share; the Postgres connection wrapper translates placeholders.
+"""
+
+import atexit
 import json
 import sqlite3
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -57,6 +65,66 @@ CREATE TABLE IF NOT EXISTS vocab (
 );
 """
 
+# Postgres: millisecond timestamps need BIGINT, and ``seq`` replaces SQLite's
+# implicit rowid as the insertion order.
+PG_SCHEMA = """
+CREATE TABLE IF NOT EXISTS sessions (
+    seq             BIGINT GENERATED ALWAYS AS IDENTITY UNIQUE,
+    id              TEXT PRIMARY KEY,
+    user_id         TEXT NOT NULL,
+    article_id      TEXT NOT NULL,
+    mode            TEXT NOT NULL,
+    started_at      BIGINT NOT NULL,
+    duration_ms     BIGINT NOT NULL,
+    calib_error_px  DOUBLE PRECISION,
+    gaze_score      INTEGER NOT NULL,
+    quiz_score      INTEGER NOT NULL,
+    final_score     INTEGER NOT NULL,
+    flags           TEXT NOT NULL,
+    metrics         TEXT NOT NULL,
+    answers         TEXT NOT NULL,
+    layout          TEXT NOT NULL,
+    samples         TEXT NOT NULL,
+    created_at      BIGINT NOT NULL,
+    lookups         TEXT NOT NULL DEFAULT '[]',
+    marks           TEXT NOT NULL DEFAULT '[]',
+    calib_jitter_px DOUBLE PRECISION,
+    self_marks      TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, created_at);
+CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS articles (
+    id          TEXT PRIMARY KEY,
+    data        TEXT NOT NULL,
+    imported_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS translations (
+    key        TEXT PRIMARY KEY,
+    result     TEXT NOT NULL,
+    created_at BIGINT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS vocab (
+    id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id     TEXT NOT NULL,
+    lang        TEXT NOT NULL,
+    lemma       TEXT NOT NULL,
+    article     TEXT NOT NULL DEFAULT '',
+    pos         TEXT NOT NULL DEFAULT '',
+    translation TEXT NOT NULL,
+    example     TEXT NOT NULL DEFAULT '',
+    article_id  TEXT NOT NULL DEFAULT '',
+    lookups     INTEGER NOT NULL DEFAULT 1,
+    created_at  BIGINT NOT NULL,
+    updated_at  BIGINT NOT NULL,
+    UNIQUE (user_id, lang, lemma)
+);
+"""
+
+TABLES = ("sessions", "settings", "articles", "translations", "vocab")
+
 # Columns added after the first release; created on startup if missing.
 MIGRATIONS = [
     ("sessions", "lookups", "TEXT NOT NULL DEFAULT '[]'"),
@@ -77,8 +145,74 @@ def _path() -> Path:
     return config.DB_PATH
 
 
+def is_postgres() -> bool:
+    return bool(config.DATABASE_URL)
+
+
+def _order() -> str:
+    """Column that gives insertion order (ties in created_at are common)."""
+    return "seq" if is_postgres() else "rowid"
+
+
+class _PgConn:
+    """Gives a psycopg connection the small sqlite3-style surface used here."""
+
+    def __init__(self, conn) -> None:
+        self.conn = conn
+
+    def execute(self, sql: str, params=()):
+        return self.conn.execute(sql.replace("?", "%s"), params)
+
+    def executescript(self, script: str) -> None:
+        for stmt in script.split(";"):
+            if stmt.strip():
+                self.conn.execute(stmt)
+
+
+_pools: dict = {}
+_pool_lock = threading.Lock()
+_initialised: set = set()
+
+
+def _pg_pool():
+    url = config.DATABASE_URL
+    with _pool_lock:
+        pool = _pools.get(url)
+        if pool is None:
+            from psycopg.rows import dict_row
+            from psycopg_pool import ConnectionPool
+
+            # prepare_threshold=None: Supabase's transaction pooler (port 6543)
+            # does not support prepared statements. Idle connections are
+            # closed quickly because serverless instances are frozen between
+            # requests; check_connection drops ones the server has closed.
+            pool = ConnectionPool(
+                url,
+                min_size=0,
+                max_size=config.DB_POOL_SIZE,
+                max_idle=60,
+                kwargs={"row_factory": dict_row, "prepare_threshold": None, "autocommit": False},
+                check=ConnectionPool.check_connection,
+                open=True,
+            )
+            _pools[url] = pool
+    return pool
+
+
+@atexit.register
+def close_pools() -> None:
+    with _pool_lock:
+        for pool in _pools.values():
+            pool.close()
+        _pools.clear()
+
+
 @contextmanager
-def connect():
+def _raw():
+    if is_postgres():
+        with _pg_pool().connection() as conn:  # commits on success, rolls back on error
+            yield _PgConn(conn)
+        return
     path = _path()
     path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(path)
@@ -90,16 +224,51 @@ def connect():
         conn.close()
 
 
+def _target() -> str:
+    return config.DATABASE_URL or str(_path())
+
+
+@contextmanager
+def connect():
+    # Serverless platforms may not run the ASGI lifespan, so the schema is
+    # also ensured on first use.
+    if _target() not in _initialised:
+        init()
+    with _raw() as c:
+        yield c
+
+
 def init() -> None:
-    with connect() as c:
-        c.executescript(SCHEMA)
-        for table, col, decl in MIGRATIONS:
-            cols = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
-            if col not in cols:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+    with _raw() as c:
+        if is_postgres():
+            # Serialise concurrent cold starts creating the schema.
+            c.execute("SELECT pg_advisory_xact_lock(4210731)")
+            c.executescript(PG_SCHEMA)
+            for table, col, decl in MIGRATIONS:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {decl}")
+            # Supabase exposes tables in "public" through its Data API. With
+            # RLS on and no policies, that API sees nothing; this app connects
+            # as the table owner, which RLS does not restrict.
+            for table in TABLES:
+                c.execute(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY")
+        else:
+            c.executescript(SCHEMA)
+            for table, col, decl in MIGRATIONS:
+                cols = {r["name"] for r in c.execute(f"PRAGMA table_info({table})")}
+                if col not in cols:
+                    c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
+    _initialised.add(_target())
 
 
-def _summary(row: sqlite3.Row) -> dict:
+def reset() -> None:
+    """Drop every table (tests only)."""
+    with _raw() as c:
+        for t in TABLES:
+            c.execute(f"DROP TABLE IF EXISTS {t}")
+    _initialised.discard(_target())
+
+
+def _summary(row) -> dict:
     d = dict(row)
     d["flags"] = json.loads(d["flags"])
     return d
@@ -129,7 +298,7 @@ def latest_per_user() -> list[dict]:
             SELECT {SUMMARY_COLS}, metrics,
                    (SELECT COUNT(*) FROM sessions s2 WHERE s2.user_id = s.user_id) AS session_count
             FROM sessions s
-            WHERE rowid = (SELECT MAX(rowid) FROM sessions s3 WHERE s3.user_id = s.user_id)
+            WHERE {_order()} = (SELECT MAX({_order()}) FROM sessions s3 WHERE s3.user_id = s.user_id)
             """
         ).fetchall()
     out = []
@@ -146,7 +315,7 @@ def latest_per_user() -> list[dict]:
 def user_sessions(user_id: str) -> list[dict]:
     with connect() as c:
         rows = c.execute(
-            f"SELECT {SUMMARY_COLS}, metrics FROM sessions WHERE user_id = ? ORDER BY rowid DESC",
+            f"SELECT {SUMMARY_COLS}, metrics FROM sessions WHERE user_id = ? ORDER BY {_order()} DESC",
             (user_id,),
         ).fetchall()
     out = []
@@ -174,7 +343,7 @@ def get_session(session_id: str) -> dict | None:
 def all_sessions(with_metrics: bool = False) -> list[dict]:
     cols = SUMMARY_COLS + (", metrics" if with_metrics else "")
     with connect() as c:
-        rows = c.execute(f"SELECT {cols} FROM sessions ORDER BY rowid").fetchall()
+        rows = c.execute(f"SELECT {cols} FROM sessions ORDER BY {_order()}").fetchall()
     out = []
     for r in rows:
         d = _summary(r)
@@ -268,7 +437,8 @@ def cache_get(key: str) -> dict | None:
 def cache_put(key: str, result: dict) -> None:
     with connect() as c:
         c.execute(
-            "INSERT OR REPLACE INTO translations(key, result, created_at) VALUES (?, ?, ?)",
+            "INSERT INTO translations(key, result, created_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET result = excluded.result, created_at = excluded.created_at",
             (key, json.dumps(result, ensure_ascii=False), int(time.time() * 1000)),
         )
 
@@ -284,7 +454,7 @@ def add_vocab(user_id: str, lang: str, g: dict, example: str, article_id: str) -
             INSERT INTO vocab(user_id, lang, lemma, article, pos, translation, example, article_id, lookups, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)
             ON CONFLICT(user_id, lang, lemma) DO UPDATE SET
-                lookups = lookups + 1, updated_at = excluded.updated_at,
+                lookups = vocab.lookups + 1, updated_at = excluded.updated_at,
                 translation = excluded.translation, example = excluded.example, article_id = excluded.article_id
             """,
             (user_id, lang, g["lemma"], g.get("article", ""), g.get("pos", ""), g["translation"], example, article_id, now, now),
@@ -306,7 +476,7 @@ def delete_vocab(user_id: str, vocab_id: int) -> bool:
 
 def all_session_ids() -> list[str]:
     with connect() as c:
-        return [r["id"] for r in c.execute("SELECT id FROM sessions ORDER BY rowid")]
+        return [r["id"] for r in c.execute(f"SELECT id FROM sessions ORDER BY {_order()}")]
 
 
 def update_scores(session_id: str, gaze: int, final: int, flags: list, metrics: dict) -> None:

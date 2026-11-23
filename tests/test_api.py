@@ -1,24 +1,6 @@
-import importlib
-import os
-
 import pytest
-from fastapi.testclient import TestClient
 
-TOKEN = "test-token"
-
-
-@pytest.fixture()
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("ADMIN_TOKEN", TOKEN)
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "t.db"))
-    import backend.config
-    import backend.main
-
-    importlib.reload(backend.config)
-    importlib.reload(backend.main)
-    with TestClient(backend.main.app) as c:
-        yield c
-
+from tests.conftest import TOKEN
 
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 

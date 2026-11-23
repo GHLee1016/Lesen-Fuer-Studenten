@@ -9,7 +9,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 FRONTEND_DIR = BASE_DIR / "frontend"
 CONTENT_DIR = Path(__file__).resolve().parent / "content"
 
-DB_PATH = Path(os.environ.get("DB_PATH", BASE_DIR / "data" / "lesen.db"))
+# Postgres connection string (e.g. Supabase). When set, it is used instead of
+# the SQLite file below.
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+DB_POOL_SIZE = int(os.environ.get("DB_POOL_SIZE", "4"))
+
+# On Vercel the deployment is read-only except /tmp, and /tmp is not kept
+# between instances: SQLite there is only good enough for a quick preview.
+ON_VERCEL = bool(os.environ.get("VERCEL"))
+_default_db = Path("/tmp/lesen.db") if ON_VERCEL else BASE_DIR / "data" / "lesen.db"
+DB_PATH = Path(os.environ.get("DB_PATH", _default_db))
 
 # The admin token is never stored in the repository. Set ADMIN_TOKEN in the
 # deployment environment; without it a random token is generated per process
