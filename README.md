@@ -123,6 +123,7 @@ ADMIN_TOKEN=change-me uvicorn backend.main:app --reload --port 8000
 | `DATABASE_URL` | (없음) | Postgres 연결 문자열(Supabase 등). 설정하면 SQLite 대신 씁니다. 표는 처음 요청할 때 자동으로 만듭니다. |
 | `DB_PATH` | `data/lesen.db` | `DATABASE_URL`이 없을 때 쓰는 SQLite 파일 경로 |
 | `DB_POOL_SIZE` | `4` | Postgres 연결 풀 크기 (서버 인스턴스마다) |
+| `DB_TIMEOUT` | `8` | Postgres 연결을 기다리는 최대 시간(초). 넘으면 요청을 실패로 돌려보냅니다. |
 | `ALLOWED_ORIGINS` | (없음) | 다른 도메인에서 API를 부를 때 허용할 origin 목록 (쉼표로 구분) |
 | `ANTHROPIC_API_KEY` | (없음) | 설정하면 단어 뜻풀이에 Claude를 씁니다. 문장 문맥을 보고 기본형(`ging` → `gehen`), 명사의 관사, 품사까지 알려 줍니다. 없으면 무료 MyMemory로 단어만 번역합니다(문맥 미반영). |
 | `LESEN_TRANSLATE_MODEL` | `claude-opus-5-5` | 뜻풀이에 쓸 Claude 모델 |
@@ -144,6 +145,7 @@ FastAPI 앱 전체를 Vercel의 Python 함수 하나로 올리고, 데이터는 
       - `ADMIN_TOKEN`: 대시보드 로그인 토큰. 꼭 정해야 합니다. 비우면 인스턴스마다 다른 토큰이 생겨 로그인이 안 됩니다.
       - `ANTHROPIC_API_KEY`: 선택. 문맥 기반 뜻풀이
    3. Deploy를 누르면 `https://<프로젝트>.vercel.app`에서 학생 화면, `/admin`에서 대시보드가 열립니다. PR마다 미리보기 주소도 생깁니다.
+   4. `https://<프로젝트>.vercel.app/api/health`를 열어 `"ok": true`, `"database": "postgres (…pooler.supabase.com:6543)"`, `"admin_token_set": true`가 나오는지 확인합니다. DB에 못 붙으면 503과 오류 종류만 보여 주고(비밀번호·연결 문자열은 노출하지 않음), 자세한 내용은 Vercel의 **Logs**에 남습니다.
 3. **데모 데이터**(선택): 로컬에서 `DATABASE_URL`을 같은 값으로 두고 `python -m tools.seed_demo 24`를 실행하면 판정 검증 화면을 채울 가상 세션이 들어갑니다. 가상 세션은 사용자 ID가 `sim-`으로 시작해 실제 학생과 섞이지 않습니다.
 
 운영할 때 알아 둘 점:

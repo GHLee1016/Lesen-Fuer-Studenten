@@ -20,7 +20,7 @@ from typing import Literal
 from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
@@ -36,7 +36,13 @@ USER_ID_PATTERN = r"^[\w.\-가-힣]{1,40}$"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    db.init()
+    # A database that cannot be reached (wrong DATABASE_URL, paused Supabase
+    # project) must not keep the whole app from starting: pages still load,
+    # /api/health says what is wrong, and the schema is retried on first use.
+    try:
+        db.init()
+    except Exception:
+        log.exception("Database initialisation failed (%s); will retry on first use.", db.describe())
     if config.ADMIN_TOKEN_GENERATED:
         log.warning("ADMIN_TOKEN is not set. Generated a temporary admin token: %s", config.ADMIN_TOKEN)
     if config.ON_VERCEL and not config.DATABASE_URL:
@@ -103,6 +109,20 @@ LEVEL_ORDER = ["A1", "A2", "B1", "B2", "C1", "C2"]
 def _level_key(a: dict):
     lv = (a.get("level") or "?")[:2]
     return (LEVEL_ORDER.index(lv) if lv in LEVEL_ORDER else 99, a["title"])
+
+
+@app.get("/api/health")
+def health():
+    """Deployment check. Never includes the connection string or its error text."""
+    try:
+        with db.connect() as c:
+            c.execute("SELECT 1")
+        status = {"ok": True, "database": db.describe()}
+    except Exception as e:
+        log.exception("Health check: database unavailable")
+        status = {"ok": False, "database": db.describe(), "error": type(e).__name__}
+    status["admin_token_set"] = not config.ADMIN_TOKEN_GENERATED
+    return JSONResponse(status, status_code=200 if status["ok"] else 503)
 
 
 @app.get("/api/articles")

@@ -13,6 +13,8 @@ CONTENT_DIR = Path(__file__).resolve().parent / "content"
 # the SQLite file below.
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 DB_POOL_SIZE = int(os.environ.get("DB_POOL_SIZE", "4"))
+# Seconds to wait for a Postgres connection before failing the request.
+DB_TIMEOUT = float(os.environ.get("DB_TIMEOUT", "8"))
 
 # On Vercel the deployment is read-only except /tmp, and /tmp is not kept
 # between instances: SQLite there is only good enough for a quick preview.

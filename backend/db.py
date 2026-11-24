@@ -149,6 +149,16 @@ def is_postgres() -> bool:
     return bool(config.DATABASE_URL)
 
 
+def describe() -> str:
+    """Which store is in use, without credentials."""
+    if not is_postgres():
+        return "sqlite"
+    from urllib.parse import urlsplit
+
+    u = urlsplit(config.DATABASE_URL)
+    return f"postgres ({u.hostname}:{u.port or 5432})"
+
+
 def _order() -> str:
     """Column that gives insertion order (ties in created_at are common)."""
     return "seq" if is_postgres() else "rowid"
@@ -191,7 +201,13 @@ def _pg_pool():
                 min_size=0,
                 max_size=config.DB_POOL_SIZE,
                 max_idle=60,
-                kwargs={"row_factory": dict_row, "prepare_threshold": None, "autocommit": False},
+                timeout=config.DB_TIMEOUT,
+                kwargs={
+                    "row_factory": dict_row,
+                    "prepare_threshold": None,
+                    "autocommit": False,
+                    "connect_timeout": max(1, int(config.DB_TIMEOUT / 2)),
+                },
                 check=ConnectionPool.check_connection,
                 open=True,
             )
