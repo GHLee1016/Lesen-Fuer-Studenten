@@ -1,3 +1,14 @@
+/* Headings: MaruBuri Bold (NAVER, OFL), self-hosted and subset to ASCII and
+   the 2,350 common Hangul syllables (frontend/fonts/MaruBuri-OFL.txt).
+   Rare syllables fall back to the next font in --font-head. */
+@font-face {
+  font-family: "MaruBuri";
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: url("/static/fonts/MaruBuri-Bold-ksx1001.woff2") format("woff2");
+}
+
 :root {
   /* Paper and ink: a printed worksheet rather than an app template.
      Black ink for text, fountain-pen blue (Königsblau) for actions and
@@ -34,11 +45,14 @@
   --shadow-lg: 0 1px 0 var(--line-2), 0 18px 40px rgba(31, 29, 25, .12);
   --radius: 2px;
   --radius-sm: 2px;
-  /* Korean and UI text: Pretendard. German text and figures: Tinos, which
-     has the same metrics as Times New Roman, so line breaks match on every
-     OS (the teacher's replay re-renders the text at the student's width). */
-  --font-ui: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
-  --font-de: "Tinos", "Times New Roman", Times, serif;
+  /* Korean and UI text: IBM Plex Sans KR. Korean headings: MaruBuri.
+     German text and figures: Literata, a serif drawn for long reading on
+     screens. All are web fonts, so the text breaks into the same lines on
+     every OS, which the teacher's replay relies on (it re-renders the text
+     at the student's width). */
+  --font-ui: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-head: "MaruBuri", "IBM Plex Sans KR", "AppleMyungjo", "Batang", serif;
+  --font-de: "Literata", Georgia, "Times New Roman", serif;
   --font-display: var(--font-de);
   --font-read: var(--font-de);
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -58,7 +72,7 @@ body {
   overflow-wrap: break-word;
 }
 h1, h2, h3, h4 { margin: 0; color: var(--ink); }
-h1, h2 { font-family: var(--font-ui); font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; }
+h1, h2 { font-family: var(--font-head); font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; }
 :lang(de) { font-family: var(--font-de); letter-spacing: 0; }
 h3, h4 { font-family: var(--font-ui); font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
 a { color: var(--ink); }

@@ -3,9 +3,9 @@
 .article-wrap { position: relative; }
 /* Generous line spacing: it leaves room for glosses under words and makes
    lines easier to tell apart for the webcam tracker. */
-.article { position: relative; padding: 52px 68px 48px; font: 21px/2.3 var(--font-read); color: var(--ink); hyphens: manual; }
+.article { position: relative; padding: 52px 68px 48px; font: 20px/2.3 var(--font-read); color: var(--ink); hyphens: manual; }
 .article [data-aoi] { position: relative; }
-.article h1 { font: 700 36px/1.5 var(--font-read); margin: 0 0 24px; color: var(--ink); }
+.article h1 { font: 700 34px/1.5 var(--font-read); margin: 0 0 24px; color: var(--ink); }
 .article .lead { color: var(--text-2); font-style: italic; }
 .article p { margin: 0 0 34px; }
 .article .w { position: relative; border-radius: 2px; }
