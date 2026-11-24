@@ -1,45 +1,87 @@
+<div align="center">
+
+<img src="docs/readme/logo.svg" width="96" alt="Lesen 로고" />
+
 # Lesen für Studenten
 
+**웹캠 시선으로 독일어 읽기 과정을 보여 주는 읽기 연습 도구**
+
+독일어 기사를 읽는 동안 시선을 기록해서,<br/>
+**어느 문단을 건너뛰었는지, 어느 문장에서 막혔는지** 퀴즈 결과와 함께 보여 줘요.
+
 [![CI](https://github.com/GHLee1016/Lesen-Fuer-Studenten/actions/workflows/ci.yml/badge.svg)](https://github.com/GHLee1016/Lesen-Fuer-Studenten/actions/workflows/ci.yml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Python%203.13-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![WebGazer.js](https://img.shields.io/badge/WebGazer.js-브라우저%20안%20시선%20추정-1f5eff)](https://webgazer.cs.brown.edu/)
+[![Supabase](https://img.shields.io/badge/Supabase-Postgres-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com/)
+[![Vercel](https://img.shields.io/badge/Vercel-배포-000000?logo=vercel)](https://lesen-fuer-studenten-two.vercel.app)
+[![Playwright](https://img.shields.io/badge/Playwright-E2E-2EAD33?logo=playwright&logoColor=white)](tests/e2e)
 
-웹캠 시선 추적으로 **독일어 읽기 과정**을 기록하고 분석하는 웹 애플리케이션입니다.
-학생이 기사를 읽는 동안 시선이 어느 문단에 얼마나 머물렀는지, 어디를 건너뛰고 어디로 되돌아갔는지, 어느 문장에서 막혔는지를 측정하고, 내용 퀴즈와 합쳐 점수를 냅니다. 모르는 단어는 눌러서 모국어 뜻을 바로 보고 단어장에 모을 수 있습니다. 교사는 대시보드에서 반 전체 현황과 학생별 읽기 과정을 실시간으로 확인하고 시선을 다시 재생해 볼 수 있습니다.
+[서비스 열기](https://lesen-fuer-studenten-two.vercel.app) &nbsp; [판정 기준 조정 기록](docs/tuning.md) &nbsp; [수업 버전에서 바뀐 점](#수업-버전에서-바뀐-점)
 
-<p align="center">
-  <img src="docs/screenshots/results.webp" width="720" alt="학생 결과 화면: 최종 점수, 읽기 지표, 문단별 체류 히트맵" />
-</p>
+수업 과제로 만들었던 프로젝트를 혼자 다시 설계하고 만든 개인 포트폴리오 프로젝트
+
+<img src="docs/readme/hero.webp" alt="지문 위에 시선 히트맵을 겹친 학생 결과 화면과 교사용 대시보드" width="100%" />
+
+<sub>학생 결과 화면(앞)과 교사용 대시보드(뒤)예요. 화면 속 기록은 마우스 데모로 만든 예시예요.</sub>
+
+</div>
+
+## 화면
+
+<div align="center">
+
+### 시작, 시선 보정, 읽기
+<img src="docs/screenshots/start.webp" width="49%" alt="시작 화면" /> <img src="docs/screenshots/calibration.webp" width="49%" alt="보정 결과: 검증 오차" />
+<img src="docs/screenshots/reading.webp" width="98%" alt="읽는 중 단어를 눌러 뜻풀이 보기" />
+
+### 결과 리포트
+<img src="docs/screenshots/results.webp" width="49%" alt="최종 점수와 점수 구성" /> <img src="docs/screenshots/difficulty.webp" width="49%" alt="어려웠던 구간과 오래 머문 단어" />
+
+### 교사용 대시보드와 시선 재생
+<img src="docs/screenshots/admin.webp" width="49%" alt="교사용 대시보드: 읽기 수준 분포와 학생 표" /> <img src="docs/screenshots/replay.webp" width="49%" alt="교사용 시선 재생" />
+
+</div>
+
+카메라가 없어도 [서비스](https://lesen-fuer-studenten-two.vercel.app)에서 **마우스 데모**를 고르면 마우스 위치를 시선으로 삼아 같은 과정을 해 볼 수 있어요. 교사용 화면(`/admin`)은 관리자 토큰이 있어야 열려요.
+
+## Lesen이 하는 일
+
+외국어 읽기 시험은 보통 점수 하나만 남겨서, 학생이 **어디서 막혔는지**는 알기 어려워요.
+Lesen은 읽는 동안의 시선을 문단과 문장 단위로 정리해서, 같은 점수라도 읽는 방식이 어떻게 달랐는지 보여 줘요.
+
+- **진단하지 않아요.** 왜 그렇게 읽었는지는 말하지 않고, 기록에서 확인한 것만 보여 줘요.
+- **카메라 영상을 서버에 보내지 않아요.** 시선은 브라우저 안에서 추정하고, 화면 위 좌표만 저장해요.
+- **확실하지 않으면 감점하지 않아요.** 보정 오차가 크면 감점을 줄이거나 하지 않아요.
+- **학생이 직접 고른 표시는 점수에 넣지 않아요.** 어려웠던 문장을 솔직하게 고를 수 있게요.
 
 ## 주요 기능
 
-| | |
-|---|---|
-| **브라우저 안에서 끝나는 시선 추정** | [WebGazer.js](https://webgazer.cs.brown.edu/)로 시선을 추정합니다. 카메라 영상은 기기를 벗어나지 않고, 서버에는 시선 좌표만 전송됩니다. |
-| **검증 가능한 보정** | 9점 클릭 학습 → 9점 응시로 아핀 보정 → **학습에 쓰지 않은 5개 점으로 실제 오차(px)를 측정**합니다. 보정 행렬이 검증 오차를 줄이지 못하면 적용하지 않습니다. |
-| **문단 단위 읽기 분석** | I-DT 알고리즘으로 고정(fixation)을 검출하고, 문단별 체류 시간·커버리지, 되돌아 읽기(regression), 읽기 속도(WPM)를 계산합니다. |
-| **DW 지문 가져오기** | [DW Deutsch lernen](https://learngerman.dw.com/de/deutsch-lernen) 레슨 주소를 넣으면 본문, CEFR 수준(A1–C1), DW 용어 풀이, 이해도 문제(복수 정답 포함)를 가져옵니다. |
-| **단어 뜻풀이와 단어장** | 읽는 중 단어를 누르면 학생이 고른 모국어(14개 언어)로 뜻이 단어 아래에 달리고, 찾아본 단어는 예문과 함께 단어장에 모입니다. CSV로 내려받아 Anki 같은 앱에 넣을 수 있습니다. |
-| **어려웠던 구간 자동 탐지** | 자신의 평소 속도보다 훨씬 오래 머문 문장, 읽고 지나간 뒤 다시 돌아온 문장을 찾아 표시하고 시선 점수에서 감점합니다. 학생은 문장을 눌러 직접 표시하거나 해제할 수 있습니다. |
-| **교사용 시선 재생** | 학생이 읽은 화면 폭 그대로 지문을 다시 그리고, 시선과 고정 경로를 시간 순서대로 재생합니다. 단어를 찾아본 시점이 타임라인에 표시됩니다. |
-| **읽기 리포트** | 읽기 수준, 점수 구성, 단어 기준 읽기 프로필(충분히 읽음·훑어 읽음·건너뜀)과 "다음에 해 볼 것" 안내를 보여 주고, 고정 시간 가중 히트맵·시선 경로·문단별 읽음 정도를 본문 위에 겹쳐 보여 줍니다. |
-| **교사용 대시보드** | 최근 점수 기준 읽기 수준 분포(기대 수준 이상·근접·지원 필요), 정렬·필터 가능한 학생 표, 학생별 세션 이력과 문단별 지표, 데이터 품질 경고, CSV/JSON 내보내기. WebSocket으로 실시간 갱신됩니다. |
-| **마우스 데모 모드** | 카메라 없이 마우스를 시선으로 삼아 전체 흐름을 체험할 수 있습니다. |
+### 시선 추정과 보정
+- **브라우저 안에서 추정:** [WebGazer.js](https://webgazer.cs.brown.edu/)로 초당 약 30번 시선을 추정해요.
+- **검증할 수 있는 보정:** 점 9개를 누르며 학습하고, 점 9개를 바라보며 아핀 보정을 한 뒤, **학습에 쓰지 않은 점 5개로 실제 오차(px)를 재요.** 보정이 오차를 줄이지 못하면 적용하지 않아요.
+- **흔들림 측정:** 점을 바라보는 동안 시선이 흩어진 정도를 재서, 분석 기준을 그 세션에 맞게 넓혀요.
 
-<table>
-  <tr>
-    <td><img src="docs/screenshots/start.webp" alt="시작 화면" /></td>
-    <td><img src="docs/screenshots/calibration.webp" alt="보정 결과: 검증 오차" /></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/reading.webp" alt="읽는 중 단어를 눌러 뜻풀이 보기" /></td>
-    <td><img src="docs/screenshots/difficulty.webp" alt="어려웠던 구간과 감점" /></td>
-  </tr>
-  <tr>
-    <td><img src="docs/screenshots/replay.webp" alt="교사용 시선 재생" /></td>
-    <td><img src="docs/screenshots/admin.webp" alt="교사용 대시보드: 읽기 수준 분포와 학생 표" /></td>
-  </tr>
-</table>
+### 읽는 동안
+- **단어 뜻풀이:** 단어를 누르면 고른 언어(14개)로 뜻이 단어 아래에 달려요. LLM 키가 있으면 문맥을 보고 기본형, 관사, 품사까지 알려 줘요.
+- **단어장:** 찾아본 단어가 예문과 함께 모이고, CSV로 내려받아 Anki 같은 앱에 넣을 수 있어요.
+- **돌아보기:** 퀴즈 뒤, 결과를 보기 전에 어려웠던 문장을 직접 골라요. 자동 판정에 끌려가지 않은 기준 데이터가 돼요.
 
-## 동작 방식
+### 결과 리포트
+- **점수 구성:** 문단 커버리지, 어려움 감점, 시선 점수, 퀴즈 점수를 막대로 나눠 보여 줘요.
+- **어려웠던 구간:** 내 평소 속도보다 훨씬 오래 머문 문장, 지나간 뒤 다시 돌아온 문장을 찾아 이유와 시간을 함께 보여 줘요.
+- **지문 위 지도:** 고정 시간 가중 히트맵, 시선 경로, 문단별 읽음 정도, 어려웠던 문장을 본문 위에 겹쳐 봐요.
+- **다음에 해 볼 것:** 건너뛴 문단, 너무 빨랐던 문단, 틀린 퀴즈에 맞춘 안내.
+
+### 교사용 대시보드
+- **반 전체:** 최근 점수 기준 읽기 수준 분포, 학생 표, 데이터 품질 경고, CSV와 JSON 내보내기.
+- **학생별:** 세션 이력, 문단별 지표, 찾아본 단어, 어려웠던 문장.
+- **시선 재생:** 학생이 본 화면 폭 그대로 지문을 다시 그리고 시선을 시간 순서대로 재생해요. 단어를 찾아본 시점이 타임라인에 표시돼요.
+- **판정 검증:** 학생의 자기 표시와 자동 판정이 얼마나 겹치는지 보정 오차 구간별로 보고, 저장된 시선 데이터로 기준 후보를 다시 돌려 적용할 수 있어요.
+
+### 지문
+- **DW Deutsch lernen 가져오기:** 레슨 주소를 넣으면 본문, CEFR 수준(A1~C1), 용어 풀이, 이해도 문제를 가져와요.
+
+## 구조
 
 ```mermaid
 flowchart LR
@@ -47,189 +89,265 @@ flowchart LR
     Cam[웹캠] --> WG[WebGazer<br/>ridge regression]
     WG --> Aff[아핀 보정]
     Aff --> Rec["시선 샘플 기록<br/>(본문 기준 좌표)"]
-    Layout["문단·단어 레이아웃"] --> Post
+    Layout["문단, 단어 레이아웃"] --> Post
     Click[단어 클릭] --> Lookup
     Rec --> Post[세션 제출]
   end
-  Post -->|"POST /api/sessions<br/>좌표 + 레이아웃 + 조회 기록 + 퀴즈 답"| API
+  Post -->|"POST /api/sessions<br/>좌표, 레이아웃, 조회 기록, 퀴즈 답"| API
   Lookup -->|POST /api/lookup| Tr
-  subgraph Server["FastAPI 서버"]
-    API --> Ana["analysis.py<br/>I-DT · 문단 · 문장 난이도 · 점수"]
-    Tr["translate.py<br/>Claude 또는 MyMemory"] --> DB
+  subgraph Server["FastAPI (Vercel 함수)"]
+    API --> Ana["analysis.py<br/>고정 검출, 문단, 문장 난이도, 점수"]
+    Tr["translate.py<br/>LLM 또는 MyMemory"] --> DB
     DWI["dw.py<br/>DW 레슨 가져오기"] --> DB
-    Ana --> DB[(SQLite 또는<br/>Supabase Postgres)]
-    Ana --> Hub[WebSocket hub]
+    Ana --> DB[(Supabase Postgres<br/>로컬은 SQLite)]
+    Ana --> Hub[WebSocket]
   end
-  Hub -->|실시간 갱신 + 20초마다 새로고침| Admin[교사용 대시보드]
-  Admin -->|레슨 URL| DWI
+  Hub -->|실시간 갱신, 20초마다 새로고침| Admin[교사용 대시보드]
+  Admin -->|레슨 주소| DWI
 ```
 
-- 시선 좌표는 **본문(article) 요소의 왼쪽 위 기준**으로 기록합니다. 그래서 스크롤과 무관하게 문단 위치와 바로 비교할 수 있습니다.
-- 퀴즈 정답은 서버에만 있고, 채점도 서버가 합니다.
+| 무엇 | 어디서 | 왜 |
+|---|---|---|
+| 시선 추정과 보정 | 학생 브라우저 | 카메라 영상을 기기 밖으로 보내지 않으려고 |
+| 고정 검출, 판정, 점수 | 서버 코드 | 같은 기록에는 항상 같은 결과가 나오고, 기준을 바꾸면 저장된 세션을 다시 계산할 수 있게 |
+| 퀴즈 채점 | 서버 코드 | 정답을 화면에 보내지 않으려고 |
+| 단어 뜻풀이 | LLM 또는 MyMemory | 판정에는 관여하지 않고 뜻만 다는 데 써요. 결과는 DB에 캐시해요 |
+
+시선 좌표는 본문 요소의 왼쪽 위를 기준으로 저장해서, 스크롤과 상관없이 문단 위치와 바로 비교해요.
 
 ## 분석과 점수
 
-웹캠 시선 추적의 오차는 보통 100–200px로, 단어 하나를 정확히 구분하기는 어렵지만 문장과 문단은 구분할 수 있습니다. 그래서 점수는 **문단**과 **문장** 단위로 계산하고, 단어 단위 결과는 참고용 후보로만 씁니다. 줄 간격을 넓게(2.3배) 잡아 줄을 구분하기 쉽게 했습니다.
+웹캠 시선 추적의 오차는 보통 100~200px이라 단어 하나는 정확히 가리기 어렵지만, 문장과 문단은 구분할 수 있어요. 그래서 점수는 **문단**과 **문장** 단위로 내고, 단어 단위 결과는 참고용 후보로만 써요. 줄 간격을 2.3배로 넓혀 줄을 구분하기 쉽게 했어요.
 
-1. **고정 검출 (I-DT)**: 분산(가로 폭 + 세로 폭)이 기준 이하로 100ms 이상 유지되는 구간을 하나의 고정으로 봅니다. 기준은 120px이고, 보정 때 측정한 흔들림이 크면 흔들림의 6배까지 넓힙니다. 250ms 넘게 샘플이 끊기면 추적이 끊긴 것으로 보고 구간을 나눕니다.
-2. **문단 배정**: 고정 위치가 문단 상자(여유 범위 포함) 안에 있으면 그 문단의 체류 시간에 더합니다.
-3. **문단 커버리지**: `min(1, 체류 시간 / 기준 시간)`. 기준 시간은 문단 단어 수를 기준 속도 200 WPM으로 읽을 때 걸리는 시간입니다. 학습자는 이보다 느리게 읽어도 손해가 없고, 대충 훑으면 점수가 낮아집니다.
-4. **어려웠던 구간**: 각 고정을 가장 가까운 단어에 배정한 뒤 문장 단위로 모읍니다.
-   - **오래 머문 문장**: 단어당 체류 시간이 그 학생의 문장 중앙값의 2배 이상이고, 5단어 이상이며, 1.2초 이상 머문 문장
-   - **다시 읽은 문장**: 지금까지 읽은 가장 아래 줄보다 2줄 이상 위로 돌아가 0.5초 이상 머문 문장
-   - **단어 후보**: 그 학생의 단어 체류 시간 중앙값의 3.5배(최소 0.7초) 이상 머문 단어. 보정 오차가 40px 이하일 때만 보여 줍니다.
+1. **고정 검출 (I-DT):** 분산(가로 폭 + 세로 폭)이 기준 이하로 100ms 이상 유지되면 하나의 고정이에요. 기준은 120px이고, 보정 때 잰 흔들림이 크면 흔들림의 6배까지 넓혀요.
+2. **문단 커버리지:** `min(1, 체류 시간 / 기준 시간)`. 기준 시간은 문단을 분당 200단어로 읽을 때 걸리는 시간이에요. 천천히 읽어도 손해가 없고, 대충 훑으면 낮아져요.
+3. **어려웠던 구간:** 고정을 가장 가까운 단어에 배정하고 문장 단위로 모아요.
+   - **오래 머문 문장:** 단어당 시간이 그 학생의 문장 중앙값의 2배 이상, 5단어 이상, 1.2초 이상
+   - **다시 읽은 문장:** 지금까지 읽은 가장 아래 줄보다 2줄 이상 위로 돌아가 0.5초 이상 머문 문장
+   - **단어 후보:** 단어 체류 시간 중앙값의 3.5배(최소 0.7초) 이상. 보정 오차 40px 이하일 때만 보여 줘요.
+4. **감점:** `min(25, 40 × 어려운 문장 단어 비율 + 1.5 × 단어 후보 수) × 신뢰도`. 신뢰도는 보정 오차 60px까지 1이고 150px에서 0이 돼요.
+5. **시선 점수:** `문단 커버리지(단어 수 가중 평균) × 100 − 감점`
+6. **최종 점수:** `시선 점수 × 0.6 + 퀴즈 점수 × 0.4`. 퀴즈가 없는 지문은 시선 점수가 최종 점수예요.
 
-   학생 자신의 평소 속도를 기준으로 삼기 때문에, 원래 천천히 읽는 학생이 불리하지 않습니다.
-5. **감점**: `min(25, 40 × 어려운 문장에 속한 단어 비율 + 1.5 × 단어 후보 수) × 신뢰도`. 신뢰도는 보정 오차가 60px 이하면 1이고, 150px에서 0이 되도록 줄어듭니다. 정확하지 않은 측정으로 점수를 깎지 않기 위해서입니다.
-6. **시선 점수**: `문단 커버리지(단어 수 가중 평균) × 100 − 감점`
-7. **최종 점수**: `시선 점수 × 0.6 + 퀴즈 점수 × 0.4`. 퀴즈가 없는 지문은 시선 점수가 최종 점수입니다. 복수 정답 문항은 고른 답의 집합이 정답과 같아야 맞습니다.
+학생 자신의 평소 속도를 기준으로 삼아서, 원래 천천히 읽는 학생이 불리하지 않아요. 기준을 바꾸면 대시보드의 **전체 다시 분석**으로 저장된 세션을 다시 계산해요.
 
-이 기준값들은 웹캠 수준의 오차를 섞은 가상 독자로 조정했습니다. 조정 전에는 어려움 없이 읽은 학생도 오차 100px에서 거의 모든 문장이 "다시 읽은 문장"으로 잡혀 감점 상한을 받았는데, 조정 후에는 1~2점입니다. 방법과 결과는 [docs/tuning.md](docs/tuning.md)에 있습니다. 기준을 바꾼 뒤에는 대시보드의 **전체 다시 분석**으로 저장된 세션을 다시 계산할 수 있습니다.
+## 재 본 숫자
 
-실제 수업 데이터로 판정을 확인할 수 있도록, 학생은 결과를 보기 전 **돌아보기** 단계에서 어려웠던 문장을 직접 고릅니다. 교사용 대시보드의 **판정 검증**은 이 표시와 자동 감지가 얼마나 겹치는지 보정 오차 구간별로 보여 주고, 저장된 시선 데이터로 여러 기준을 다시 돌려 가장 잘 맞는 값을 찾아 적용할 수 있게 합니다.
+지어낸 목표값이 아니라 직접 잰 값이에요. 실제 학생 웹캠 데이터는 아직 모으는 중이라, 판정 정확도는 **웹캠 잡음을 섞은 가상 독자**로 잰 값이에요([조정 기록](docs/tuning.md)).
 
-학생이 직접 표시하거나 해제한 문장은 교사에게 보이지만 점수에는 영향을 주지 않습니다. 솔직하게 표시하는 걸 방해하지 않기 위해서입니다. 같은 이유로 단어를 찾아본 것도 감점하지 않습니다.
-
-함께 계산하는 지표:
-- 읽기 속도(WPM)
-- 평균 고정 시간
-- 본문 응시 비율
-- 되돌아 읽기: 같은 줄에서 왼쪽으로 80px 이상 이동한 경우와 이전 문단으로 돌아간 경우. 줄바꿈 시선 이동은 제외합니다.
-- 데이터 품질 경고: 보정 오차 과다, 수집 빈도 저하, 시선이 대부분 본문 밖에 있는 경우
-
-## 실행
-
-Python 3.11 이상이 필요합니다.
-
-```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -r backend/requirements.txt
-ADMIN_TOKEN=change-me uvicorn backend.main:app --reload --port 8000
-```
-
-| 주소 | 용도 |
-|---|---|
-| `http://localhost:8000/` | 학생 화면 |
-| `http://localhost:8000/admin` | 교사용 대시보드 (`ADMIN_TOKEN` 값으로 로그인) |
-| `http://localhost:8000/docs` | API 문서 (OpenAPI) |
-
-웹캠은 `localhost`나 HTTPS에서만 쓸 수 있습니다.
-
-### 환경 변수
-
-| 이름 | 기본값 | 설명 |
+| 항목 | 값 | 조건 |
 |---|---|---|
-| `ADMIN_TOKEN` | (임의 생성) | 대시보드 로그인 토큰. 비우면 서버를 켤 때마다 새로 만들어 로그에 출력합니다. |
-| `DATABASE_URL` | (없음) | Postgres 연결 문자열(Supabase 등). 설정하면 SQLite 대신 씁니다. 표는 처음 요청할 때 자동으로 만듭니다. |
-| `DB_PATH` | `data/lesen.db` | `DATABASE_URL`이 없을 때 쓰는 SQLite 파일 경로 |
-| `DB_POOL_SIZE` | `4` | Postgres 연결 풀 크기 (서버 인스턴스마다) |
-| `DB_TIMEOUT` | `8` | Postgres 연결을 기다리는 최대 시간(초). 넘으면 요청을 실패로 돌려보냅니다. |
-| `ALLOWED_ORIGINS` | (없음) | 다른 도메인에서 API를 부를 때 허용할 origin 목록 (쉼표로 구분) |
-| `ANTHROPIC_API_KEY` | (없음) | 설정하면 단어 뜻풀이에 Claude를 씁니다. 문장 문맥을 보고 기본형(`ging` → `gehen`), 명사의 관사, 품사까지 알려 줍니다. 없으면 무료 MyMemory로 단어만 번역합니다(문맥 미반영). |
-| `LESEN_TRANSLATE_MODEL` | `claude-opus-5-5` | 뜻풀이에 쓸 Claude 모델 |
+| 어려움 없는 독자가 받은 감점 | 조정 전 21.9점 → 조정 후 0.4점 | 오차 약 50px, 조정에 쓰지 않은 가상 독자 24명 |
+| 같은 감점, 오차가 큰 경우 | 조정 전 25점(상한) → 조정 후 1.0점 | 오차 약 100px |
+| 어려운 문장 찾기 정밀도, 재현율 | 0.49, 0.38 | 오차 약 50px. 오차가 없으면 1.00, 0.89 |
+| 문단 커버리지 | 0.68~0.70 | 오차 50px, 100px, 160px에서 비슷하게 유지(오차가 없으면 0.79) |
+| 아핀 보정 효과 | 검증 오차 약 160px → 4px | 일부러 오차를 섞은 가짜 WebGazer(E2E 테스트) |
+| 자동 테스트 | pytest 58개, E2E 2개 | GitHub Actions가 PR마다 SQLite와 Postgres에서 각각 돌려요 |
 
-뜻풀이 결과는 데이터베이스에 캐시되므로 같은 단어·문장·언어 조합은 한 번만 번역됩니다. Claude 호출은 짧은 구조화 출력(JSON 스키마)과 낮은 effort를 쓰고, 요청이 거부되면 다른 모델로 자동 재시도하는 서버 측 fallback을 켜 두었습니다.
+오차가 있을 때 문장 하나를 정확히 짚는 능력(0.3~0.5)은 아직 낮아요. 그래서 오차가 클수록 감점을 줄이고, 학생의 자기 표시로 실제 정확도를 확인하는 판정 검증 기능을 만들었어요.
 
-### 배포 (Vercel + Supabase)
+## 수업 버전에서 바뀐 점
 
-FastAPI 앱 전체를 Vercel의 Python 함수 하나로 올리고, 데이터는 Supabase Postgres에 저장합니다. `pyproject.toml`의 `[tool.vercel] entrypoint`가 `backend.main:app`을 가리키고, `/static` 파일은 빌드 때 Vercel CDN으로 올라갑니다. `.vercelignore`로 테스트·문서·도구는 배포 묶음에서 뺐습니다.
-
-1. **Supabase**
-   1. 새 프로젝트를 만듭니다. 리전은 Vercel 함수 리전과 가까운 곳(기본값이 미국 동부라면 `us-east-1`)을 고릅니다.
-   2. 상단 **Connect**에서 **Transaction pooler** 연결 문자열(포트 `6543`)을 복사합니다. 서버리스 함수는 인스턴스가 자주 바뀌므로 직접 연결(5432)보다 풀러가 맞습니다. `[YOUR-PASSWORD]` 자리에 DB 비밀번호를 넣습니다.
-   3. 표는 앱이 처음 요청을 받을 때 자동으로 만들고, 모든 표에 RLS를 켭니다. 앱은 표 소유자로 접속하므로 영향이 없고, Supabase의 공개 Data API로는 학생 데이터를 읽을 수 없습니다.
-2. **Vercel**
-   1. **Add New → Project**에서 이 GitHub 저장소를 가져옵니다. 프레임워크는 자동 감지에 맡기고 빌드 설정은 비워 둡니다.
-   2. **Environment Variables**에 넣습니다.
-      - `DATABASE_URL`: 위의 Supabase 연결 문자열
-      - `ADMIN_TOKEN`: 대시보드 로그인 토큰. 꼭 정해야 합니다. 비우면 인스턴스마다 다른 토큰이 생겨 로그인이 안 됩니다.
-      - `ANTHROPIC_API_KEY`: 선택. 문맥 기반 뜻풀이
-   3. Deploy를 누르면 `https://<프로젝트>.vercel.app`에서 학생 화면, `/admin`에서 대시보드가 열립니다. PR마다 미리보기 주소도 생깁니다.
-   4. `https://<프로젝트>.vercel.app/api/health`를 열어 `"ok": true`, `"database": "postgres (…pooler.supabase.com:6543)"`, `"admin_token_set": true`가 나오는지 확인합니다. DB에 못 붙으면 503과 오류 종류만 보여 주고(비밀번호·연결 문자열은 노출하지 않음), 자세한 내용은 Vercel의 **Logs**에 남습니다.
-3. **데모 데이터**(선택): 로컬에서 `DATABASE_URL`을 같은 값으로 두고 `python -m tools.seed_demo 24`를 실행하면 판정 검증 화면을 채울 가상 세션이 들어갑니다. 가상 세션은 사용자 ID가 `sim-`으로 시작해 실제 학생과 섞이지 않습니다.
-
-운영할 때 알아 둘 점:
-
-- **실시간 갱신**: Vercel에서는 서버 인스턴스가 여러 개일 수 있어, 다른 인스턴스에 저장된 세션은 WebSocket으로 바로 오지 않을 수 있습니다. 그래서 대시보드는 20초마다 최신 현황을 다시 받고, WebSocket이 계속 실패하면 HTTP로 20초마다 불러옵니다(상단 표시가 "20초마다 갱신"으로 바뀝니다).
-- **Supabase 무료 프로젝트**는 일주일 동안 활동이 적으면 일시 정지됩니다. 정지되면 대시보드에서 다시 켜면 되고 데이터는 남아 있습니다.
-- `DATABASE_URL` 없이 배포하면 SQLite를 `/tmp`에 만들어 동작은 하지만, 인스턴스가 바뀌면 데이터가 사라집니다(서버 로그에 경고가 남습니다).
-- Vercel 외의 서버(Fly.io, Railway, 자체 서버 등)에서는 `uvicorn backend.main:app --host 0.0.0.0 --port $PORT`로 실행하면 됩니다. 환경 변수는 같습니다.
-
-## 테스트
-
-PR과 `main` 푸시마다 GitHub Actions(`.github/workflows/ci.yml`)가 pytest를 SQLite와 Postgres에서 한 번씩 돌린 뒤, 빈 데이터베이스로 서버를 띄워 아래 E2E 시나리오 두 개를 SQLite와 Postgres에서 각각 실행합니다. 스크린샷은 실행 결과의 `e2e-screenshots-*` 아티팩트로 7일간 받을 수 있습니다.
-
-```bash
-pip install -r requirements-dev.txt
-pytest
-# 같은 테스트를 Postgres에서 (테스트마다 모든 표를 지우므로 빈 테스트용 DB를 쓰세요)
-TEST_DATABASE_URL=postgresql://postgres@localhost:5432/lesen_test pytest
-```
-
-E2E 시나리오(Playwright, 서버 실행 중):
-
-```bash
-# 마우스 데모로 읽기(단어 조회, 느린 문장, 되돌아 읽기 포함) → 퀴즈 → 결과 → 대시보드 → 시선 재생
-# DW_URL을 주면 대시보드에서 DW 레슨 가져오기까지 확인합니다.
-BASE=http://localhost:8000 ADMIN_TOKEN=change-me node tests/e2e/demo-flow.mjs out/
-# 오차를 일부러 섞은 가짜 WebGazer로 보정 절차와 아핀 보정 검증
-BASE=http://localhost:8000 node tests/e2e/calibration-stub.mjs out/
-```
-
-## 프로젝트 구조
-
-```
-backend/
-  main.py          API 라우트, 관리자 인증, WebSocket
-  analysis.py      고정 검출, 문단 분석, 문장·단어 난이도, 점수 (보정 품질에 따라 기준 조정)
-  sim.py           웹캠 잡음을 섞은 가상 독자 (기준 조정용)
-  reanalyze.py     저장된 세션을 현재 기준으로 다시 계산
-  validation.py    자동 감지와 학생 자기 평가 비교, 기준 후보 비교
-  params.py        대시보드에서 바꾼 판정 기준
-  dw.py            DW Deutsch lernen 레슨 가져오기
-  translate.py     단어 뜻풀이 (Claude / MyMemory)
-  content/         기본 지문·퀴즈 (JSON)
-  db.py            저장소 (SQLite, DATABASE_URL이 있으면 Postgres)
-frontend/
-  index.html       학생 화면
-  admin.html       교사용 대시보드
-  css/reader.css   지문 타이포그래피 (학생 화면과 재생 화면이 공유)
-  js/              tracker · calibration · article · overlay · vocab · student · admin · replay
-tools/tune.py      판정 기준 측정·탐색 (docs/tuning.md)
-tools/compare.py   실제 세션의 판정 검증 보고서
-tools/seed_demo.py 판정 검증 화면을 시험할 가상 세션 만들기
-tests/             pytest (분석·난이도·잡음·DW·API·배포 설정), e2e (Playwright)
-pyproject.toml     Vercel 배포 설정 (의존성은 backend/requirements.txt와 같게 유지)
-```
-
-## 수업 프로젝트에서 바뀐 점
-
-처음 버전은 수업 과제로 만들었고, 이후 구조를 다시 짰습니다.
+처음 버전은 수업 과제로 만들었고, 이후 혼자 구조를 다시 짰어요.
 
 | 이전 | 현재 | 이유 |
 |---|---|---|
-| 서버에서 YOLOv8-Pose로 '시선'을 구해 WebGazer와 가중 평균 | 서버 추론 제거, 브라우저에서만 추정 | YOLO 출력은 두 눈 키포인트의 중점, 즉 **머리 위치**였습니다. 이를 섞으면 오히려 정확도가 떨어졌고, 초당 15장의 프레임을 서버로 보내는 비용도 들었습니다. |
-| 60×100 격자 중 시선이 닿은 칸 비율로 점수 계산 | 문단별 체류 시간 / 기준 읽기 시간 | 이전 방식은 화면을 아무렇게나 훑을수록 점수가 높았습니다. |
-| 목표점 50px 안에 들어와야만 보정 샘플을 수집 | 무조건 수집 후 중앙값 사용, 별도 검증 점으로 오차 측정 | 이전 방식은 오차가 크면 끝나지 않았고, 이미 맞는 샘플만 모여 보정 효과가 없었습니다. |
-| 메모리 저장 | SQLite (로컬) / Supabase Postgres (배포) | 서버를 재시작하면 데이터가 사라졌습니다. |
-| 관리자 토큰을 README에 공개, 학생별 내보내기는 인증 없음 | 환경 변수 토큰, 모든 관리 API 인증 | 보안 |
-| `innerHTML`로 사용자 ID 출력 | DOM API로 텍스트만 삽입, ID 형식 검증 | XSS 방지 |
+| 서버에서 YOLOv8-Pose로 '시선'을 구해 WebGazer와 가중 평균 | 서버 추론을 없애고 브라우저에서만 추정 | YOLO 출력은 두 눈 키포인트의 중점, 즉 **머리 위치**였어요. 섞으면 오히려 정확도가 떨어졌고, 초당 15장을 서버로 보내는 비용도 들었어요. |
+| 60×100 격자 중 시선이 닿은 칸 비율로 점수 | 문단별 체류 시간 / 기준 읽기 시간 | 이전 방식은 화면을 아무렇게나 훑을수록 점수가 높았어요. |
+| 목표점 50px 안에 들어와야만 보정 샘플 수집 | 모두 모은 뒤 중앙값, 별도 검증 점으로 오차 측정 | 이전 방식은 오차가 크면 끝나지 않았고, 이미 맞는 샘플만 모여 보정 효과가 없었어요. |
+| 메모리 저장 | 로컬은 SQLite, 배포는 Supabase Postgres | 서버를 재시작하면 데이터가 사라졌어요. |
+| 관리자 토큰을 README에 공개 | 환경 변수 토큰, 모든 관리 API 인증 | 보안 |
+| `innerHTML`로 사용자 ID 출력 | DOM API로 텍스트만 넣고 ID 형식 검증 | XSS 방지 |
 | 퀴즈 1문항 (0점 또는 100점) | 5문항, 서버 채점 | 변별력 |
+| 테스트 없음 | pytest, Playwright E2E, GitHub Actions | 판정 기준을 바꿔도 안전하게 |
 
-## 글꼴
+## 기술
 
-- 독일어 지문과 숫자: [Literata](https://fonts.google.com/specimen/Literata). 화면에서 오래 읽도록 설계된 세리프예요.
-- 한국어 제목, 본문, 화면 요소: [IBM Plex Sans KR](https://fonts.google.com/specimen/IBM+Plex+Sans+KR)
+<table>
+<tr>
+<td valign="top">
 
-운영체제마다 글꼴이 달라 줄바꿈이 바뀌면 교사용 재생에서 시선 위치가 어긋나기 때문에, 모든 기기에서 같은 웹 글꼴을 내려받아 씁니다. 그래서 지문 글꼴을 바꾸면 그 전에 저장된 세션은 재생할 때 줄이 조금 어긋날 수 있어요.
+**화면**
+- Vanilla JS (ES 모듈)
+- WebGazer.js
+- Canvas (히트맵, 재생)
+- Literata, IBM Plex Sans KR
 
-## 지문 저작권
+</td>
+<td valign="top">
 
-기본 지문 하나 외에는 저장소에 지문을 넣지 않습니다. DW에서 가져온 지문은 실행 중인 서버의 데이터베이스에만 저장되고, 학생 화면과 대시보드에 원문 링크와 함께 표시됩니다. 공개 서비스로 운영하기 전에는 [DW 이용 약관](https://learngerman.dw.com/de/impressum/a-57669411)을 확인하세요.
+**서버**
+- FastAPI
+- Vercel 함수
+- Supabase Postgres
+- SQLite (로컬)
+- psycopg 연결 풀
+
+</td>
+<td valign="top">
+
+**분석**
+- I-DT 고정 검출
+- 아핀 보정 (최소제곱)
+- 웹캠 잡음 시뮬레이터
+- Wilson 신뢰구간
+
+</td>
+<td valign="top">
+
+**품질**
+- pytest
+- Playwright E2E
+- GitHub Actions
+- SQLite, Postgres 둘 다 테스트
+
+</td>
+</tr>
+</table>
+
+## 빠른 시작
+
+### 준비물
+- Python 3.11 이상
+- E2E 테스트를 돌릴 때만 Node 18 이상과 Playwright
+
+### 1. 받기
+```bash
+git clone https://github.com/GHLee1016/Lesen-Fuer-Studenten.git
+```
+
+```bash
+cd Lesen-Fuer-Studenten
+```
+
+### 2. 서버 켜기
+```bash
+pip install -r backend/requirements.txt
+```
+
+```bash
+ADMIN_TOKEN=change-me uvicorn backend.main:app --reload --port 8000
+```
+
+http://localhost:8000 이 학생 화면, http://localhost:8000/admin 이 교사용 대시보드(`ADMIN_TOKEN`으로 로그인)예요. 웹캠은 localhost나 https에서만 켜져요.
+
+### 3. 테스트
+```bash
+pip install -r requirements-dev.txt
+```
+
+```bash
+pytest
+```
+
+같은 테스트를 Postgres에서 돌릴 때는 빈 테스트용 DB를 써요(테스트마다 모든 표를 지워요).
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres@localhost:5432/lesen_test pytest
+```
+
+### 4. E2E (서버를 켠 상태에서)
+```bash
+BASE=http://localhost:8000 ADMIN_TOKEN=change-me node tests/e2e/demo-flow.mjs out/
+```
+
+```bash
+BASE=http://localhost:8000 node tests/e2e/calibration-stub.mjs out/
+```
+
+첫 번째는 마우스 데모로 읽기, 단어 조회, 퀴즈, 돌아보기, 결과, 대시보드, 시선 재생까지 돌려요. 두 번째는 오차를 섞은 가짜 WebGazer로 보정 절차를 확인해요.
+
+### 5. 판정 기준 도구
+```bash
+python -m tools.tune report
+```
+
+```bash
+DB_PATH=data/demo.db python -m tools.seed_demo 24
+```
+
+```bash
+DB_PATH=data/demo.db python -m tools.compare --whatif
+```
+
+`tune`은 가상 독자로 판정 기준을 재고, `seed_demo`는 판정 검증 화면을 시험할 가상 세션(`sim-`으로 시작)을 넣고, `compare`는 저장된 세션으로 검증 보고서를 만들어요.
+
+## 배포 (Vercel과 Supabase)
+
+### Supabase
+- 새 프로젝트를 만들고, **Connect**에서 **Transaction pooler** 연결 문자열(포트 6543)을 복사해요. `db.xxxx.supabase.co:5432` 직접 연결은 Vercel에서 붙지 않아요.
+- 표는 앱이 처음 요청을 받을 때 자동으로 만들고, 모든 표에 RLS를 켜요. 공개 Data API로는 학생 데이터를 읽을 수 없어요.
+- 무료 프로젝트는 일주일 동안 활동이 적으면 일시 정지돼요. 대시보드에서 다시 켜면 데이터는 그대로예요.
+
+### Vercel
+- 저장소를 가져오면 `pyproject.toml`의 `[tool.vercel] entrypoint`가 `backend.main:app`을 가리켜요. **Root Directory는 비워 두세요.** `backend`로 두면 함수가 시작하자마자 실패해요.
+- 환경 변수를 바꾼 뒤에는 Redeploy가 필요해요. 배포 상태는 `/api/health`로 확인해요(`ok`, 쓰는 DB, `ADMIN_TOKEN` 설정 여부).
+- Function Region을 Supabase 리전과 가깝게 두면 응답이 빨라져요.
+
+### 환경 변수
+Vercel 대시보드에서만 다루고, 채팅이나 저장소에 올리지 않아요.
+
+| 이름 | 내용 |
+|---|---|
+| `ADMIN_TOKEN` | 교사용 대시보드 토큰. 배포에서는 꼭 정해요. 비우면 인스턴스마다 다른 토큰이 생겨 로그인이 안 돼요 |
+| `DATABASE_URL` | Supabase 연결 문자열. 없으면 SQLite(`DB_PATH`, 기본 `data/lesen.db`)를 써요 |
+| `ANTHROPIC_API_KEY` | 선택. 문맥에 맞는 단어 뜻풀이. 없으면 무료 MyMemory로 단어만 번역해요 |
+| `LESEN_TRANSLATE_MODEL` | 선택. 뜻풀이에 쓸 모델 이름 |
+| `DB_POOL_SIZE`, `DB_TIMEOUT` | 선택. Postgres 연결 풀 크기(기본 4), 연결 대기 시간(기본 8초) |
+| `ALLOWED_ORIGINS` | 선택. 다른 도메인에서 API를 부를 때 허용할 origin(쉼표로 구분) |
+
+## 폴더
+
+```
+Lesen-Fuer-Studenten/
+├── backend/
+│   ├── main.py              # API, 관리자 인증, WebSocket, /api/health
+│   ├── analysis.py          # 고정 검출, 문단 분석, 문장과 단어 난이도, 점수
+│   ├── params.py            # 대시보드에서 바꾼 판정 기준
+│   ├── validation.py        # 자기 표시와 자동 판정 비교, 기준 후보 비교
+│   ├── reanalyze.py         # 저장된 세션을 현재 기준으로 다시 계산
+│   ├── sim.py               # 웹캠 잡음을 섞은 가상 독자
+│   ├── dw.py                # DW 레슨 가져오기
+│   ├── translate.py         # 단어 뜻풀이 (LLM, MyMemory)
+│   ├── db.py                # 저장소 (SQLite, DATABASE_URL이 있으면 Postgres)
+│   └── content/             # 기본 지문과 퀴즈
+├── frontend/
+│   ├── index.html           # 학생 화면
+│   ├── admin.html           # 교사용 대시보드
+│   ├── css/                 # 공통, 지문(학생 화면과 재생이 공유), 학생, 교사
+│   └── js/                  # tracker, calibration, article, overlay, vocab, student, admin, replay
+├── tools/                   # tune(기준 측정), compare(검증 보고서), seed_demo(가상 세션)
+├── tests/                   # pytest, e2e (Playwright)
+├── docs/                    # tuning.md, 스크린샷
+├── pyproject.toml           # Vercel 설정 (의존성은 backend/requirements.txt와 같게)
+└── .github/workflows/ci.yml # PR마다 테스트
+```
+
+## 지켜야 할 것
+
+- 판정과 점수는 서버 코드가 내요. LLM은 단어 뜻풀이에만 쓰고, 시선 데이터나 점수를 보내지 않아요.
+- 카메라 영상과 얼굴 이미지는 저장하거나 전송하지 않아요. 저장하는 건 시선 좌표, 문단과 단어 위치, 퀴즈 답, 찾아본 단어, 보정 오차예요.
+- 지문 글꼴을 바꾸면 그 전에 저장된 세션은 시선 재생에서 줄이 조금 어긋나요. 재생은 학생이 본 폭 그대로 다시 그리기 때문에, 모든 기기에서 같은 웹 글꼴을 써요.
+- DW에서 가져온 지문은 실행 중인 서버의 DB에만 저장하고 원문 링크를 함께 보여 줘요. 저장소에는 기본 지문 하나만 있어요. 공개 운영 전에는 [DW 이용 약관](https://learngerman.dw.com/de/impressum/a-57669411)을 확인하세요.
+- 단어장은 학생 ID만으로 조회돼요. 학생 ID는 추측하기 어렵게 정하는 걸 권해요.
 
 ## 한계
 
-- 웹캠 시선 추적은 조명, 안경, 자세에 민감합니다. 단어 단위 결과와 같은 줄 안의 되돌아 읽기는 추정치로 보아야 합니다.
-- 읽는 도중 창 크기를 바꾸면 문단과 단어 위치가 달라져 분석이 어긋납니다.
-- MyMemory 뜻풀이는 문맥을 보지 않아 기능어(`man`, `was` 등)나 여러 뜻이 있는 단어에서 엉뚱한 결과가 나올 수 있습니다. `ANTHROPIC_API_KEY`를 설정하면 문맥에 맞는 뜻을 줍니다.
-- 단어장은 학생 ID만으로 조회할 수 있습니다. 학생 ID를 추측하기 어렵게 정하는 걸 권합니다.
+- 웹캠 시선 추적은 조명, 안경, 자세에 민감해요. 단어 단위 결과와 같은 줄 안의 되돌아 읽기는 추정치예요.
+- 읽는 도중 창 크기를 바꾸면 문단과 단어 위치가 달라져 분석이 어긋나요.
+- MyMemory 뜻풀이는 문맥을 보지 않아 `man`, `was` 같은 기능어에서 엉뚱한 뜻이 나올 수 있어요.
+
+## 다음 계획
+
+- [ ] **실제 웹캠 데이터 모으기:** 학생 여러 명의 세션과 자기 표시로 판정 정확도를 다시 재고 기준 조정
+- [ ] **줄 배정 알고리즘:** 시선이 한두 줄씩 어긋나는 문제를 줄 끝에서 처음으로 돌아가는 시선(return sweep) 기준으로 보정
+- [ ] **단어장 접근 보호:** 학생 ID만으로 조회되지 않게 간단한 인증 추가
+- [ ] **지문 늘리기:** 수준별 DW 레슨 묶음 준비
+
+## 쓴 데이터와 도구
+
+- **Deutsche Welle** Deutsch lernen (지문, 수준, 용어 풀이, 이해도 문제)
+- **WebGazer.js** (브라운 대학교), **MyMemory** 번역 API
+- **FastAPI**, **psycopg**, **Supabase**, **Vercel**
+- **Playwright**, **pytest**, **GitHub Actions**
+- **Literata**, **IBM Plex Sans KR** (Google Fonts)
