@@ -3,14 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>교사용 대시보드 · Lesen für Studenten</title>
+  <title>교사용 대시보드, Lesen für Studenten</title>
   <meta name="robots" content="noindex" />
-  <meta name="theme-color" content="#062f3d" />
+  <meta name="theme-color" content="#ffffff" />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Tinos:ital,wght@0,400;0,700;1,400&display=swap" />
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&amp;display=swap" />
   <link rel="stylesheet" href="/static/css/base.css" />
   <link rel="stylesheet" href="/static/css/reader.css" />
   <link rel="stylesheet" href="/static/css/admin.css" />
@@ -26,16 +25,10 @@
 
   <!-- Login -->
   <section class="login" id="loginView">
-    <div class="login-side dark">
+    <form class="login-form sheet" id="loginForm">
       <a class="brand" href="/"><b>Lesen</b><small>für Studenten</small></a>
-      <div>
-        <h1>학생들의 읽기를<br />한 화면에서.</h1>
-        <p>읽기 수준 분포, 학생별 문단 체류 시간, 데이터 품질 경고를 실시간으로 확인해요.</p>
-      </div>
-    </div>
-    <form class="login-form" id="loginForm">
-      <span class="eyebrow">Teacher login</span>
       <h2>교사용 대시보드</h2>
+      <p class="muted">반 전체의 읽기 수준 분포, 학생별 읽기 기록과 시선 재생, 판정 검증을 봅니다.</p>
       <div class="field">
         <label for="token">관리자 토큰</label>
         <input class="input" id="token" type="password" autocomplete="current-password" required />
@@ -58,9 +51,8 @@
       <button class="btn btn-sm btn-ghost" id="logout" type="button">로그아웃</button>
     </header>
 
-    <section class="dash-top dark">
+    <section class="dash-top">
       <div class="wrap">
-        <span class="eyebrow">Class overview</span>
         <h1>반 전체 읽기 현황</h1>
         <dl class="kpis" id="kpis"></dl>
       </div>
@@ -113,7 +105,7 @@
         <dl class="val-kpis" id="valKpis"></dl>
         <div class="table-wrap">
           <table class="table">
-            <thead><tr><th>보정 오차</th><th class="r">세션</th><th>정밀도 (95% CI)</th><th>재현율 (95% CI)</th><th class="r">F1</th><th class="r">'어려움 없음' 세션의 표시·감점</th></tr></thead>
+            <thead><tr><th>보정 오차</th><th class="r">세션</th><th>정밀도 (95% CI)</th><th>재현율 (95% CI)</th><th class="r">F1</th><th class="r">'어려움 없음' 세션의 표시, 감점</th></tr></thead>
             <tbody id="valBuckets"></tbody>
           </table>
         </div>
@@ -134,7 +126,7 @@
         </div>
 
         <details class="params" id="paramsBox">
-          <summary>판정 기준 직접 보기·바꾸기</summary>
+          <summary>판정 기준 직접 보기, 바꾸기</summary>
           <form id="paramsForm">
             <div class="table-wrap">
               <table class="table">

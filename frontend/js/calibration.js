@@ -56,7 +56,6 @@ export class Calibration {
     this._setStatus("");
     const startBtn = h("button", { class: "btn btn-primary btn-lg", type: "button", disabled: true }, "얼굴 인식 중…");
     this._setPanel(
-            h("span", { class: "eyebrow" }, "Calibration"),
       h("h2", {}, "시선 보정을 시작할게요"),
       h("p", {}, "오른쪽 아래 카메라 화면에서 얼굴이 초록색 상자 안에 들어오게 해 주세요."),
       h("p", {}, `점이 9개 차례로 나타나요. 점을 바라보면서 ${CLICKS_PER_POINT}번씩 클릭하고, 이어서 클릭 없이 점만 바라보면 돼요.`),
@@ -88,18 +87,18 @@ export class Calibration {
 
     // 1. Train WebGazer's regression with clicks while looking at each dot.
     for (let i = 0; i < GRID.length; i++) {
-      this._setStatus(`1/3 · 점을 바라보며 ${CLICKS_PER_POINT}번 클릭하세요 (${i + 1}/${GRID.length})`);
+      this._setStatus(`1/3, 점을 바라보며 ${CLICKS_PER_POINT}번 클릭하세요 (${i + 1}/${GRID.length})`);
       await this._clickPoint(toPx(GRID[i]));
     }
 
     // 2. Fixate the same dots without clicking; fit an affine correction
     //    on top of the regression to remove systematic offset.
-    this._setStatus("2/3 · 이제 클릭하지 말고 점만 바라보세요");
+    this._setStatus("2/3, 이제 클릭하지 말고 점만 바라보세요");
     await sleep(900);
     const fitRaw = [];
     const fitTarget = [];
     for (let i = 0; i < GRID.length; i++) {
-      this._setStatus(`2/3 · 점만 바라보세요 (${i + 1}/${GRID.length})`);
+      this._setStatus(`2/3, 점만 바라보세요 (${i + 1}/${GRID.length})`);
       const target = toPx(GRID[i]);
       const raw = await this._dwellPoint(target);
       if (raw) { fitRaw.push(raw); fitTarget.push(target); }
@@ -110,7 +109,7 @@ export class Calibration {
     const valRaw = [];
     const valTarget = [];
     for (let i = 0; i < VALIDATION.length; i++) {
-      this._setStatus(`3/3 · 정확도 측정 (${i + 1}/${VALIDATION.length})`);
+      this._setStatus(`3/3, 정확도 측정 (${i + 1}/${VALIDATION.length})`);
       const target = toPx(VALIDATION[i]);
       const raw = await this._dwellPoint(target);
       if (raw) { valRaw.push(raw); valTarget.push(target); }
@@ -193,7 +192,6 @@ export class Calibration {
     const accept = h("button", { class: "btn btn-primary btn-lg", type: "button" }, "읽기 시작");
     const retry = h("button", { class: "btn btn-lg", type: "button" }, "다시 보정");
     this._setPanel(
-      h("span", { class: "eyebrow" }, "Calibration result"),
       h("h2", {}, "보정이 끝났어요"),
       h("dl", { class: "quality" },
         h("div", {}, h("dt", {}, "평균 오차"), h("dd", { class: "num" }, `${res.errorPx}px`)),
@@ -201,7 +199,7 @@ export class Calibration {
       ),
       h("p", {}, q.note),
       res.matrix
-        ? h("p", { class: "hint" }, `보정 행렬 적용 전 ${res.rawErrorPx}px → 적용 후 ${res.errorPx}px · 흔들림 ±${res.jitterPx}px (검증 점 ${res.validPoints}개)`)
+        ? h("p", { class: "hint" }, `보정 행렬 적용 전 ${res.rawErrorPx}px → 적용 후 ${res.errorPx}px, 흔들림 ±${res.jitterPx}px (검증 점 ${res.validPoints}개)`)
         : h("p", { class: "hint" }, `보정 행렬이 오차를 줄이지 못해 적용하지 않았어요 (검증 점 ${res.validPoints}개)`),
       h("div", { class: "actions" }, retry, accept),
     );

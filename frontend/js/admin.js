@@ -323,7 +323,7 @@ async function loadValidation() {
             h("td", {}, pctOf(b.precision), ciOf(b.precision_ci)),
             h("td", {}, pctOf(b.recall), ciOf(b.recall_ci)),
             h("td", { class: "r" }, b.f1 ?? "–"),
-            h("td", { class: "r" }, b.no_report_sessions ? `${b.no_report_flags}문장 · ${b.no_report_penalty}점 (${b.no_report_sessions}세션)` : "–"),
+            h("td", { class: "r" }, b.no_report_sessions ? `${b.no_report_flags}문장, ${b.no_report_penalty}점 (${b.no_report_sessions}세션)` : "–"),
           ))
       : [h("tr", { class: "empty" }, h("td", { colspan: "6" }, "아직 자기 평가가 있는 세션이 없어요. 학생이 결과 전 '돌아보기' 단계를 마친 세션부터 쌓여요."))]),
   );
@@ -527,7 +527,7 @@ function renderDrawer() {
 
   $("#drawer").replaceChildren(
     h("div", { class: "drawer-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Student report"), h("h2", {}, user_id)),
+      h("div", {}, h("h2", {}, user_id)),
       h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: closeDrawer, "aria-label": "닫기" }, icon("i-x")),
     ),
     h("div", { class: "drawer-body" },
@@ -573,7 +573,7 @@ function renderDrawer() {
             return h("div", { class: "para" },
               h("span", {}, AOI_LABEL(p.id)),
               h("div", { class: "bar" }, h("i", { style: { width: `${Math.max(2, p.coverage * 100)}%`, background: color } })),
-              h("span", { class: "v" }, `${pct(p.coverage)} · ${(p.dwell_ms / 1000).toFixed(1)}초`),
+              h("span", { class: "v" }, `${pct(p.coverage)}, ${(p.dwell_ms / 1000).toFixed(1)}초`),
             );
           }),
         ),
@@ -583,14 +583,14 @@ function renderDrawer() {
         h("dl", { class: "mini-metrics" },
           mm("문단 커버리지", pct(m.reading_coverage)),
           mm("본문 응시 비율", pct(m.on_text_ratio)),
-          mm("고정 횟수", `${m.fixations}회 · ${m.mean_fixation_ms}ms`),
-          mm("되돌아 읽기", `${m.regressions_within_line + m.regressions_between_paragraphs}회 · ${pct(m.regression_rate)}`),
+          mm("고정 횟수", `${m.fixations}회, ${m.mean_fixation_ms}ms`),
+          mm("되돌아 읽기", `${m.regressions_within_line + m.regressions_between_paragraphs}회, ${pct(m.regression_rate)}`),
           mm("건너뛴 문단", `${m.skipped_paragraphs.filter((id) => id !== "title").length}개`),
           mm("수집 빈도", `${m.sample_rate_hz} Hz`),
         ),
       ),
       h("section", {},
-        h("h3", {}, `단어장 · ${drawerData.vocab.length}개`),
+        h("h3", {}, `단어장, ${drawerData.vocab.length}개`),
         drawerData.vocab.length
           ? h("div", { class: "chips" },
               drawerData.vocab.slice(0, 40).map((v) =>
@@ -635,7 +635,7 @@ function hardSummary(sess) {
       const stats = new Map(d.sentences.map((x) => [x.s, x]));
       list.replaceChildren(...ids.slice(0, 8).map((i) => {
         const x = stats.get(i);
-        const tags = [d.difficult_sentences.includes(i) ? (x?.reasons || []).map((r) => REASON[r]).join(" · ") : null, marks.includes(i) ? "학생 표시" : null].filter(Boolean).join(" · ");
+        const tags = [d.difficult_sentences.includes(i) ? (x?.reasons || []).map((r) => REASON[r]).join(", ") : null, marks.includes(i) ? "학생 표시" : null].filter(Boolean).join(", ");
         return h("li", { lang: "de" }, sents[i] || `문장 ${i + 1}`, h("small", {}, tags));
       }));
     });

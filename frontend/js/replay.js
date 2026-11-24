@@ -62,9 +62,8 @@ class Replay {
 
     this.root = h("div", { class: "replay", role: "dialog", "aria-modal": "true", "aria-label": "시선 재생" },
       h("header", { class: "replay-head" },
-        h("div", {}, h("span", { class: "eyebrow" }, "Gaze replay"),
-          h("h2", {}, this.userId),
-          h("p", { class: "muted" }, h("span", { lang: "de" }, this.a.title), ` · ${new Date(this.s.created_at).toLocaleString("ko-KR")} · ${this.s.mode === "mouse" ? "마우스 데모" : `보정 오차 ${Math.round(this.s.calib_error_px ?? 0)}px`}`)),
+        h("div", {}, h("h2", {}, this.userId),
+          h("p", { class: "muted" }, h("span", { lang: "de" }, this.a.title), `, ${new Date(this.s.created_at).toLocaleString("ko-KR")}, ${this.s.mode === "mouse" ? "마우스 데모" : `보정 오차 ${Math.round(this.s.calib_error_px ?? 0)}px`}`)),
         h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => this.close() }, "닫기"),
       ),
       h("div", { class: "replay-body" },
@@ -176,7 +175,7 @@ class Replay {
     // fixation trail
     const recent = this.fix.filter((f) => f.t <= t && f.t + f.d >= t - TRAIL_MS);
     ctx.save();
-    ctx.strokeStyle = "rgba(27, 102, 118, .45)";
+    ctx.strokeStyle = "rgba(31, 94, 255, .45)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     recent.forEach((f, k) => (k ? ctx.lineTo(f.x, f.y) : ctx.moveTo(f.x, f.y)));
@@ -184,7 +183,7 @@ class Replay {
     for (const f of recent) {
       const age = Math.max(0, t - (f.t + f.d));
       ctx.globalAlpha = Math.max(0.1, 0.75 * (1 - age / TRAIL_MS));
-      ctx.fillStyle = "#1b6676";
+      ctx.fillStyle = "#1f5eff";
       ctx.beginPath();
       ctx.arc(f.x, f.y, Math.min(26, 5 + Math.sqrt(Math.min(f.d, t - f.t)) / 2.2), 0, Math.PI * 2);
       ctx.fill();
@@ -193,8 +192,8 @@ class Replay {
     const s = this.sampleAt(t);
     if (s) {
       ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(217, 84, 135, .28)";
-      ctx.strokeStyle = "#d95487";
+      ctx.fillStyle = "rgba(240, 96, 77, .25)";
+      ctx.strokeStyle = "#f0604d";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(s[1], s[2], 12, 0, Math.PI * 2);

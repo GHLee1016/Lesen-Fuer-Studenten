@@ -105,11 +105,11 @@ async function loadArticle(id) {
   store.set("lesen.article", id);
   const a = st.article;
   $("#articleTitle").textContent = a.title;
-  $("#articleLevel").textContent = a.level;
+  $("#articleLevel").textContent = `Niveau ${a.level}`;
   $("#frameTitle").textContent = a.title;
-  $("#frameMeta").textContent = `Niveau ${a.level} · ${a.words} Wörter`;
+  $("#frameMeta").textContent = `Niveau ${a.level}, ${a.words} Wörter`;
   const minutes = Math.max(1, Math.round(a.words / 120));
-  $("#articleMeta").textContent = `${a.words}단어 · 약 ${minutes}분 · ${a.quiz.length ? `퀴즈 ${a.quiz.length}문항` : "퀴즈 없음"}`;
+  $("#articleMeta").textContent = `${a.words}단어, 약 ${minutes}분, ${a.quiz.length ? `퀴즈 ${a.quiz.length}문항` : "퀴즈 없음"}`;
   const src = $("#articleSource");
   src.hidden = !a.source;
   if (a.source) { src.href = a.source.url; src.textContent = `출처: ${a.source.name} ↗`; }
@@ -180,7 +180,7 @@ el.form.addEventListener("submit", async (e) => {
     st.calib = await new Calibration(tracker, $("#calib")).run();
     const q = qualityOf(st.calib.errorPx);
     el.modeChip.className = `chip ${q.cls}`;
-    el.modeChip.replaceChildren(h("span", { class: "dot" }), `웹캠 · 오차 ${st.calib.errorPx}px`);
+    el.modeChip.replaceChildren(h("span", { class: "dot" }), `웹캠, 오차 ${st.calib.errorPx}px`);
   } else {
     st.calib = null;
     el.modeChip.className = "chip accent";
@@ -286,7 +286,7 @@ async function lookup(i) {
     st.glosses.set(i, g);
     gloss.className = "gloss";
     gloss.textContent = g.translation;
-    word.el.title = [g.article ? `${g.article} ${g.lemma}` : g.lemma, g.pos, g.dw ? `DW: ${g.dw.definition}` : ""].filter(Boolean).join(" · ");
+    word.el.title = [g.article ? `${g.article} ${g.lemma}` : g.lemma, g.pos, g.dw ? `DW: ${g.dw.definition}` : ""].filter(Boolean).join(", ");
     $("#vocabCount").textContent = String([...st.glosses.values()].filter(Boolean).length);
   } catch {
     st.glosses.delete(i);
@@ -516,7 +516,7 @@ function renderResults() {
 
   el.resultsTop.replaceChildren(
     h("div", { class: "report-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Reading report"), h("h2", {}, st.userId)),
+      h("div", {}, h("h2", {}, st.userId)),
       h("span", { class: "when" }, new Date(st.startedAt).toLocaleString("ko-KR", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })),
     ),
     h("div", { class: "facts" },
@@ -559,8 +559,8 @@ function renderResults() {
     h("div", { class: "two-col" },
       h("div", { class: "next" }, h("h3", {}, "다음에 해 볼 것"), h("ul", {}, recommendations(r, total - correct).map((t) => h("li", {}, t)))),
       h("dl", { class: "metric-list" },
-        mrow("고정(fixation)", `${m.fixations}회 · 평균 ${m.mean_fixation_ms}ms`),
-        mrow("되돌아 읽기", `${regress}회 · ${Math.round(m.regression_rate * 100)}%`),
+        mrow("고정(fixation)", `${m.fixations}회, 평균 ${m.mean_fixation_ms}ms`),
+        mrow("되돌아 읽기", `${regress}회, ${Math.round(m.regression_rate * 100)}%`),
         mrow("건너뛴 문단", `${m.skipped_paragraphs.filter((id) => id !== "title").length}개`),
         mrow("수집 빈도", `${m.sample_rate_hz} Hz`),
       ),
@@ -583,7 +583,7 @@ function hardSection(diff) {
   const sents = st.doc.sentences;
   const stats = new Map((diff.sentences || []).map((x) => [x.s, x]));
   return h("div", { class: "hard", id: "hardSection" },
-    h("h3", {}, `어려웠던 구간 ${list.length ? `· ${list.length}문장` : ""}`),
+    h("h3", {}, `어려웠던 구간${list.length ? `, ${list.length}문장` : ""}`),
     diff.penalty
       ? h("p", { class: "penalty-note" }, `자동으로 찾은 구간 때문에 시선 점수에서 ${diff.penalty}점이 깎였어요. 직접 표시하거나 해제해도 점수는 바뀌지 않아요.`)
       : diff.raw_penalty && diff.reliability === 0
@@ -599,7 +599,7 @@ function hardSection(diff) {
           list.map((s) => {
             const x = stats.get(s);
             const why = auto.has(s)
-              ? [(x?.reasons || []).map((r) => REASON[r]).join(" · "), x ? `문장 ${x.dwell_ms / 1000}초 · 단어당 ${x.ms_per_word}ms` : ""].filter(Boolean).join(" — ")
+              ? [(x?.reasons || []).map((r) => REASON[r]).join(", "), x ? `문장 ${x.dwell_ms / 1000}초, 단어당 ${x.ms_per_word}ms` : ""].filter(Boolean).join(", ")
               : "직접 표시함";
             return h("li", {},
               h("q", { lang: "de" }, sents[s]?.text || ""),
@@ -652,7 +652,7 @@ function renderSessionVocab() {
   }));
   $("#sessionVocab").replaceChildren(
     h("div", { class: "section-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Wortschatz"), h("h2", {}, "이번에 찾아본 단어")),
+      h("div", {}, h("h2", {}, "이번에 찾아본 단어")),
       h("button", { class: "btn btn-sm", type: "button", onclick: () => openVocabDialog(st.userId) }, "내 단어장 전체 보기"),
     ),
     items.length
@@ -672,7 +672,7 @@ function annotateParagraphs(paragraphs) {
     if (!node) continue;
     const pct = Math.round(p.coverage * 100);
     const cls = p.coverage >= 0.75 ? "good" : p.coverage >= 0.25 ? "accent" : "bad";
-    const label = p.coverage < 0.25 ? `건너뜀 · ${(p.dwell_ms / 1000).toFixed(1)}초` : `읽음 ${pct}% · ${(p.dwell_ms / 1000).toFixed(1)}초`;
+    const label = p.coverage < 0.25 ? `건너뜀, ${(p.dwell_ms / 1000).toFixed(1)}초` : `읽음 ${pct}%, ${(p.dwell_ms / 1000).toFixed(1)}초`;
     node.append(
       h("span", { class: `aoi-badge chip ${cls}` }, label),
       h("span", { class: "aoi-bar", style: { background: coverageColor(p.coverage) } }),
@@ -686,7 +686,7 @@ function drawLayers() {
   const ctx = sizeCanvas(el.overlay, w, hh);
   const fx = st.result?.metrics.fixation_list || [];
   if ($("#layerHeat").checked) drawHeatmap(ctx, w, hh, fx);
-  if ($("#layerPath").checked) drawScanpath(ctx, fx, "#1b6676");
+  if ($("#layerPath").checked) drawScanpath(ctx, fx, "#1f5eff");
   const showAoi = $("#layerAoi").checked;
   el.article.querySelectorAll(".aoi-badge, .aoi-bar").forEach((n) => { n.hidden = !showAoi; });
   el.article.classList.toggle("hide-hard", !$("#layerHard").checked);
@@ -700,7 +700,7 @@ function renderReview(feedback) {
   if (!feedback.length) { el.review.replaceChildren(); return; }
   el.review.replaceChildren(
     h("div", { class: "section-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Quiz review"), h("h2", {}, "퀴즈 리뷰")),
+      h("div", {}, h("h2", {}, "퀴즈 리뷰")),
       h("span", { class: `chip ${correct === feedback.length ? "good" : "accent"}` }, `${correct} / ${feedback.length} 정답`)),
     ...st.article.quiz.map((q, qi) => {
       const f = feedback.find((x) => x.id === q.id);
@@ -717,11 +717,6 @@ function renderReview(feedback) {
   );
 }
 
-$("#heroStart").addEventListener("click", () => el.userId.focus());
-$("#ctaStart").addEventListener("click", () => {
-  el.form.scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(() => el.userId.focus({ preventScroll: true }), 400);
-});
 
 $("#restart").addEventListener("click", () => location.reload());
 

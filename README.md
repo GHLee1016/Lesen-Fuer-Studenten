@@ -218,7 +218,10 @@ pyproject.toml     Vercel 배포 설정 (의존성은 backend/requirements.txt�
 
 ## 글꼴
 
-한국어와 화면 요소는 [Pretendard](https://github.com/orioncactus/pretendard), 독일어 지문은 Times New Roman과 글자 폭이 같은 [Tinos](https://fonts.google.com/specimen/Tinos)를 씁니다. 운영체제마다 글꼴이 달라 줄바꿈이 바뀌면 교사용 재생에서 시선 위치가 어긋나기 때문에, 모든 기기에서 같은 웹 글꼴을 내려받아 씁니다.
+- 독일어 지문과 숫자: [Literata](https://fonts.google.com/specimen/Literata). 화면에서 오래 읽도록 설계된 세리프예요.
+- 한국어 제목, 본문, 화면 요소: [IBM Plex Sans KR](https://fonts.google.com/specimen/IBM+Plex+Sans+KR)
+
+운영체제마다 글꼴이 달라 줄바꿈이 바뀌면 교사용 재생에서 시선 위치가 어긋나기 때문에, 모든 기기에서 같은 웹 글꼴을 내려받아 씁니다. 그래서 지문 글꼴을 바꾸면 그 전에 저장된 세션은 재생할 때 줄이 조금 어긋날 수 있어요.
 
 ## 지문 저작권
 
