@@ -56,7 +56,6 @@ export class Calibration {
     this._setStatus("");
     const startBtn = h("button", { class: "btn btn-primary btn-lg", type: "button", disabled: true }, "얼굴 인식 중…");
     this._setPanel(
-            h("span", { class: "eyebrow" }, "Calibration"),
       h("h2", {}, "시선 보정을 시작할게요"),
       h("p", {}, "오른쪽 아래 카메라 화면에서 얼굴이 초록색 상자 안에 들어오게 해 주세요."),
       h("p", {}, `점이 9개 차례로 나타나요. 점을 바라보면서 ${CLICKS_PER_POINT}번씩 클릭하고, 이어서 클릭 없이 점만 바라보면 돼요.`),
@@ -193,7 +192,6 @@ export class Calibration {
     const accept = h("button", { class: "btn btn-primary btn-lg", type: "button" }, "읽기 시작");
     const retry = h("button", { class: "btn btn-lg", type: "button" }, "다시 보정");
     this._setPanel(
-      h("span", { class: "eyebrow" }, "Calibration result"),
       h("h2", {}, "보정이 끝났어요"),
       h("dl", { class: "quality" },
         h("div", {}, h("dt", {}, "평균 오차"), h("dd", { class: "num" }, `${res.errorPx}px`)),

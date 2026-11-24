@@ -105,7 +105,7 @@ async function loadArticle(id) {
   store.set("lesen.article", id);
   const a = st.article;
   $("#articleTitle").textContent = a.title;
-  $("#articleLevel").textContent = a.level;
+  $("#articleLevel").textContent = `Niveau ${a.level}`;
   $("#frameTitle").textContent = a.title;
   $("#frameMeta").textContent = `Niveau ${a.level} · ${a.words} Wörter`;
   const minutes = Math.max(1, Math.round(a.words / 120));
@@ -516,7 +516,7 @@ function renderResults() {
 
   el.resultsTop.replaceChildren(
     h("div", { class: "report-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Reading report"), h("h2", {}, st.userId)),
+      h("div", {}, h("h2", {}, st.userId)),
       h("span", { class: "when" }, new Date(st.startedAt).toLocaleString("ko-KR", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })),
     ),
     h("div", { class: "facts" },
@@ -652,7 +652,7 @@ function renderSessionVocab() {
   }));
   $("#sessionVocab").replaceChildren(
     h("div", { class: "section-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Wortschatz"), h("h2", {}, "이번에 찾아본 단어")),
+      h("div", {}, h("h2", {}, "이번에 찾아본 단어")),
       h("button", { class: "btn btn-sm", type: "button", onclick: () => openVocabDialog(st.userId) }, "내 단어장 전체 보기"),
     ),
     items.length
@@ -686,7 +686,7 @@ function drawLayers() {
   const ctx = sizeCanvas(el.overlay, w, hh);
   const fx = st.result?.metrics.fixation_list || [];
   if ($("#layerHeat").checked) drawHeatmap(ctx, w, hh, fx);
-  if ($("#layerPath").checked) drawScanpath(ctx, fx, "#1b6676");
+  if ($("#layerPath").checked) drawScanpath(ctx, fx, "#2f4f93");
   const showAoi = $("#layerAoi").checked;
   el.article.querySelectorAll(".aoi-badge, .aoi-bar").forEach((n) => { n.hidden = !showAoi; });
   el.article.classList.toggle("hide-hard", !$("#layerHard").checked);
@@ -700,7 +700,7 @@ function renderReview(feedback) {
   if (!feedback.length) { el.review.replaceChildren(); return; }
   el.review.replaceChildren(
     h("div", { class: "section-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Quiz review"), h("h2", {}, "퀴즈 리뷰")),
+      h("div", {}, h("h2", {}, "퀴즈 리뷰")),
       h("span", { class: `chip ${correct === feedback.length ? "good" : "accent"}` }, `${correct} / ${feedback.length} 정답`)),
     ...st.article.quiz.map((q, qi) => {
       const f = feedback.find((x) => x.id === q.id);
@@ -717,11 +717,6 @@ function renderReview(feedback) {
   );
 }
 
-$("#heroStart").addEventListener("click", () => el.userId.focus());
-$("#ctaStart").addEventListener("click", () => {
-  el.form.scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(() => el.userId.focus({ preventScroll: true }), 400);
-});
 
 $("#restart").addEventListener("click", () => location.reload());
 

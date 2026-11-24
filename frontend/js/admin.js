@@ -527,7 +527,7 @@ function renderDrawer() {
 
   $("#drawer").replaceChildren(
     h("div", { class: "drawer-head" },
-      h("div", {}, h("span", { class: "eyebrow" }, "Student report"), h("h2", {}, user_id)),
+      h("div", {}, h("h2", {}, user_id)),
       h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: closeDrawer, "aria-label": "닫기" }, icon("i-x")),
     ),
     h("div", { class: "drawer-body" },

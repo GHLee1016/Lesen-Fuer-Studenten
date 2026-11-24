@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>교사용 대시보드 · Lesen für Studenten</title>
   <meta name="robots" content="noindex" />
-  <meta name="theme-color" content="#062f3d" />
+  <meta name="theme-color" content="#f3f0e7" />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,16 +26,10 @@
 
   <!-- Login -->
   <section class="login" id="loginView">
-    <div class="login-side dark">
+    <form class="login-form sheet" id="loginForm">
       <a class="brand" href="/"><b>Lesen</b><small>für Studenten</small></a>
-      <div>
-        <h1>학생들의 읽기를<br />한 화면에서.</h1>
-        <p>읽기 수준 분포, 학생별 문단 체류 시간, 데이터 품질 경고를 실시간으로 확인해요.</p>
-      </div>
-    </div>
-    <form class="login-form" id="loginForm">
-      <span class="eyebrow">Teacher login</span>
       <h2>교사용 대시보드</h2>
+      <p class="muted">반 전체의 읽기 수준 분포, 학생별 읽기 기록과 시선 재생, 판정 검증을 봅니다.</p>
       <div class="field">
         <label for="token">관리자 토큰</label>
         <input class="input" id="token" type="password" autocomplete="current-password" required />
@@ -58,9 +52,8 @@
       <button class="btn btn-sm btn-ghost" id="logout" type="button">로그아웃</button>
     </header>
 
-    <section class="dash-top dark">
+    <section class="dash-top">
       <div class="wrap">
-        <span class="eyebrow">Class overview</span>
         <h1>반 전체 읽기 현황</h1>
         <dl class="kpis" id="kpis"></dl>
       </div>

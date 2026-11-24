@@ -3,29 +3,31 @@
 .article-wrap { position: relative; }
 /* Generous line spacing: it leaves room for glosses under words and makes
    lines easier to tell apart for the webcam tracker. */
-.article { position: relative; padding: 52px 68px 48px; font: 21px/2.3 var(--font-read); color: #12313b; hyphens: manual; }
+.article { position: relative; padding: 52px 68px 48px; font: 21px/2.3 var(--font-read); color: var(--ink); hyphens: manual; }
 .article [data-aoi] { position: relative; }
 .article h1 { font: 700 36px/1.5 var(--font-read); margin: 0 0 24px; color: var(--ink); }
 .article .lead { color: var(--text-2); font-style: italic; }
 .article p { margin: 0 0 34px; }
 .article .w { position: relative; border-radius: 2px; }
 body[data-state="read"] .article .w { cursor: pointer; }
-body[data-state="read"] .article .w:hover { background: var(--bg-teal); }
-.article .w.looked { border-bottom: 2px solid var(--teal-2); }
+body[data-state="read"] .article .w:hover { background: var(--bg-soft); }
+/* looked-up words: marked with a highlighter, as on paper */
+.article .w.looked { background: var(--hl); }
 .gloss {
   position: absolute; left: 50%; top: calc(100% - 4px); transform: translateX(-50%);
-  font: 600 12px/1.2 var(--font-ui); color: var(--teal); white-space: nowrap; pointer-events: none;
-  background: rgba(255, 255, 255, .92); padding: 1px 4px; border-radius: 2px; letter-spacing: 0; font-style: normal;
+  font: 600 12px/1.2 var(--font-ui); color: var(--pen); white-space: nowrap; pointer-events: none;
+  background: var(--white); padding: 1px 4px; letter-spacing: 0; font-style: normal;
 }
 .gloss.loading { color: var(--text-3); }
 .gloss.err { color: var(--pink); }
 /* difficult sentences on the results map */
-.article .sent.auto { text-decoration: underline wavy rgba(217, 84, 135, .65); text-decoration-thickness: 1.5px; text-underline-offset: 6px; text-decoration-skip-ink: none; }
-.article .sent.marked { background: rgba(217, 84, 135, .12); box-shadow: 0 0 0 2px rgba(217, 84, 135, .12); border-radius: 2px; }
+/* automatic: a red correction-pen wave; the student's own: highlighter */
+.article .sent.auto { text-decoration: underline wavy rgba(181, 55, 44, .75); text-decoration-thickness: 1.5px; text-underline-offset: 6px; text-decoration-skip-ink: none; }
+.article .sent.marked { background: var(--hl); }
 .article.hide-hard .sent.auto, .article.hide-hard .sent.marked { text-decoration: none; background: none; box-shadow: none; }
 body[data-state="results"] .article .sent { cursor: pointer; }
-body[data-state="results"] .article .sent:hover { background: rgba(7, 58, 75, .05); }
-.article .w.hard-word { box-shadow: inset 0 -3px 0 rgba(227, 167, 61, .8); }
+body[data-state="results"] .article .sent:hover { background: rgba(31, 29, 25, .05); }
+.article .w.hard-word { text-decoration: underline dotted var(--pink); text-decoration-thickness: 2px; text-underline-offset: 7px; }
 .article p:last-child { margin-bottom: 0; }
 @media (max-width: 700px) { .article { padding: 30px 22px; font-size: 18px; } .article h1 { font-size: 28px; } }
 
@@ -33,6 +35,6 @@ body[data-state="results"] .article .sent:hover { background: rgba(7, 58, 75, .0
 
 .aoi-badge { position: absolute; left: 0; top: -1.65em; z-index: 2; font: 600 11.5px/1 var(--font-ui); height: 22px; }
 h1 .aoi-badge { top: -1.25em; }
-.aoi-bar { position: absolute; left: -26px; top: 6px; bottom: 6px; width: 4px; border-radius: 1px; }
+.aoi-bar { position: absolute; left: -26px; top: 6px; bottom: 6px; width: 3px; }
 @media (max-width: 700px) { .aoi-bar { left: -12px; } }
 
