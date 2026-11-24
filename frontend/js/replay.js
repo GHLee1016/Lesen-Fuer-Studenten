@@ -63,7 +63,7 @@ class Replay {
     this.root = h("div", { class: "replay", role: "dialog", "aria-modal": "true", "aria-label": "시선 재생" },
       h("header", { class: "replay-head" },
         h("div", {}, h("h2", {}, this.userId),
-          h("p", { class: "muted" }, h("span", { lang: "de" }, this.a.title), ` · ${new Date(this.s.created_at).toLocaleString("ko-KR")} · ${this.s.mode === "mouse" ? "마우스 데모" : `보정 오차 ${Math.round(this.s.calib_error_px ?? 0)}px`}`)),
+          h("p", { class: "muted" }, h("span", { lang: "de" }, this.a.title), `, ${new Date(this.s.created_at).toLocaleString("ko-KR")}, ${this.s.mode === "mouse" ? "마우스 데모" : `보정 오차 ${Math.round(this.s.calib_error_px ?? 0)}px`}`)),
         h("button", { class: "btn btn-sm btn-ghost", type: "button", onclick: () => this.close() }, "닫기"),
       ),
       h("div", { class: "replay-body" },

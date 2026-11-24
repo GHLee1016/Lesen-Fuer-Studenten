@@ -90,7 +90,7 @@
 .mini-metrics dt { color: var(--text-2); }
 .mini-metrics dd { margin: 0; font-weight: 600; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
 .flags { display: grid; gap: 8px; }
-.flag { padding: 11px 14px; border-left: 3px solid var(--sand); background: var(--sand-soft); color: #6b4708; font-size: 13px; }
+.flag { padding: 11px 14px; border-radius: var(--radius-sm); background: var(--sand-soft); color: #7a5410; font-size: 13px; }
 .danger-zone { margin-top: 36px; padding-top: 20px; border-top: 1px solid var(--line-2); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 
 /* ---------- articles ---------- */

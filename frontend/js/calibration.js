@@ -87,18 +87,18 @@ export class Calibration {
 
     // 1. Train WebGazer's regression with clicks while looking at each dot.
     for (let i = 0; i < GRID.length; i++) {
-      this._setStatus(`1/3 · 점을 바라보며 ${CLICKS_PER_POINT}번 클릭하세요 (${i + 1}/${GRID.length})`);
+      this._setStatus(`1/3, 점을 바라보며 ${CLICKS_PER_POINT}번 클릭하세요 (${i + 1}/${GRID.length})`);
       await this._clickPoint(toPx(GRID[i]));
     }
 
     // 2. Fixate the same dots without clicking; fit an affine correction
     //    on top of the regression to remove systematic offset.
-    this._setStatus("2/3 · 이제 클릭하지 말고 점만 바라보세요");
+    this._setStatus("2/3, 이제 클릭하지 말고 점만 바라보세요");
     await sleep(900);
     const fitRaw = [];
     const fitTarget = [];
     for (let i = 0; i < GRID.length; i++) {
-      this._setStatus(`2/3 · 점만 바라보세요 (${i + 1}/${GRID.length})`);
+      this._setStatus(`2/3, 점만 바라보세요 (${i + 1}/${GRID.length})`);
       const target = toPx(GRID[i]);
       const raw = await this._dwellPoint(target);
       if (raw) { fitRaw.push(raw); fitTarget.push(target); }
@@ -109,7 +109,7 @@ export class Calibration {
     const valRaw = [];
     const valTarget = [];
     for (let i = 0; i < VALIDATION.length; i++) {
-      this._setStatus(`3/3 · 정확도 측정 (${i + 1}/${VALIDATION.length})`);
+      this._setStatus(`3/3, 정확도 측정 (${i + 1}/${VALIDATION.length})`);
       const target = toPx(VALIDATION[i]);
       const raw = await this._dwellPoint(target);
       if (raw) { valRaw.push(raw); valTarget.push(target); }
@@ -199,7 +199,7 @@ export class Calibration {
       ),
       h("p", {}, q.note),
       res.matrix
-        ? h("p", { class: "hint" }, `보정 행렬 적용 전 ${res.rawErrorPx}px → 적용 후 ${res.errorPx}px · 흔들림 ±${res.jitterPx}px (검증 점 ${res.validPoints}개)`)
+        ? h("p", { class: "hint" }, `보정 행렬 적용 전 ${res.rawErrorPx}px → 적용 후 ${res.errorPx}px, 흔들림 ±${res.jitterPx}px (검증 점 ${res.validPoints}개)`)
         : h("p", { class: "hint" }, `보정 행렬이 오차를 줄이지 못해 적용하지 않았어요 (검증 점 ${res.validPoints}개)`),
       h("div", { class: "actions" }, retry, accept),
     );

@@ -11,7 +11,7 @@ export function vocabTable(items, { onDelete, showCount = true } = {}) {
       items.map((v) =>
         h("tr", {},
           h("td", { class: "de", lang: "de" }, v.article ? h("small", {}, v.article) : null, v.lemma),
-          h("td", {}, v.translation, v.pos ? h("span", { class: "muted" }, ` · ${v.pos}`) : null,
+          h("td", {}, v.translation, v.pos ? h("span", { class: "muted" }, `, ${v.pos}`) : null,
             v.dw ? h("span", { class: "dwdef", lang: "de" }, `DW: ${v.dw.definition}`) : null),
           h("td", { class: "ex", lang: "de" }, v.example || ""),
           showCount ? h("td", { class: "num" }, v.lookups ?? 1) : null,
