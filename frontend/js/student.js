@@ -686,7 +686,7 @@ function drawLayers() {
   const ctx = sizeCanvas(el.overlay, w, hh);
   const fx = st.result?.metrics.fixation_list || [];
   if ($("#layerHeat").checked) drawHeatmap(ctx, w, hh, fx);
-  if ($("#layerPath").checked) drawScanpath(ctx, fx, "#2f4f93");
+  if ($("#layerPath").checked) drawScanpath(ctx, fx, "#1f5eff");
   const showAoi = $("#layerAoi").checked;
   el.article.querySelectorAll(".aoi-badge, .aoi-bar").forEach((n) => { n.hidden = !showAoi; });
   el.article.classList.toggle("hide-hard", !$("#layerHard").checked);

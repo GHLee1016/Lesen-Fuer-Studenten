@@ -5,12 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Lesen für Studenten</title>
   <meta name="description" content="웹캠 시선 추적으로 독일어 읽기 과정을 객관적으로 측정합니다." />
-  <meta name="theme-color" content="#f3f0e7" />
+  <meta name="theme-color" content="#ffffff" />
   <link rel="icon" href="/favicon.ico" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&amp;display=swap" />
-  <link rel="preload" href="/static/fonts/MaruBuri-Bold-ksx1001.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/static/css/base.css" />
   <link rel="stylesheet" href="/static/css/reader.css" />
   <link rel="stylesheet" href="/static/css/student.css" />
@@ -47,23 +46,19 @@
   <main>
     <!-- ============ 1. Start (landing) ============ -->
     <div class="landing" data-view="start">
-      <section class="intro">
-        <div class="wrap intro-grid">
-          <div class="intro-text">
-            <h1><span lang="de">Lesen für Studenten</span></h1>
-            <p class="lede">독일어 기사를 읽는 동안 웹캠으로 시선을 기록합니다. 어느 문단을 건너뛰었는지, 어느 문장에서 오래 머물거나 다시 돌아갔는지를 내용 퀴즈 결과와 함께 보여 줍니다.</p>
-            <h2 class="minor">순서</h2>
-            <ol class="procedure">
-              <li><b>시선 보정</b><span>화면의 점 9개를 보면서 누르고, 이어서 바라보기만 합니다. 1분쯤 걸려요.</span></li>
-              <li><b>기사 읽기</b><span>평소처럼 읽습니다. 모르는 단어를 누르면 고른 언어로 뜻이 단어 아래에 달려요.</span></li>
-              <li><b>내용 퀴즈</b><span>지문을 다시 보지 않고 5문항에 답합니다.</span></li>
-              <li><b>돌아보기</b><span>읽다가 막혔던 문장을 직접 고릅니다. 점수에는 들어가지 않아요.</span></li>
-              <li><b>결과</b><span>문단별로 얼마나 읽었는지, 어려웠던 문장, 시선 히트맵을 봅니다.</span></li>
-            </ol>
-            <p class="aside">카메라 영상은 브라우저 밖으로 나가지 않고, 화면 위 시선 좌표만 저장됩니다. 카메라가 없으면 마우스 데모로 같은 과정을 해 볼 수 있어요.</p>
+      <section class="hero">
+        <div class="wrap hero-grid">
+          <div class="hero-copy">
+            <span class="chip accent">독일어 읽기 연습 · Niveau A1–C1</span>
+            <h1>기사 한 편을 읽으면,<br />내가 <em>어떻게</em> 읽었는지<br />보여 드려요</h1>
+            <p>웹캠으로 시선을 기록해 어느 문단을 건너뛰었는지, 어느 문장에서 오래 머물거나 다시 돌아갔는지를 퀴즈 결과와 함께 알려 줘요. 모르는 단어는 눌러서 모국어 뜻을 바로 볼 수 있어요.</p>
+            <ul class="hero-points">
+              <li>카메라 영상은 기기 밖으로 나가지 않아요</li>
+              <li>카메라가 없으면 마우스로 체험할 수 있어요</li>
+              <li>뜻풀이 언어 14개</li>
+            </ul>
           </div>
-
-          <form class="start-form sheet" id="startForm" novalidate>
+          <form class="start-form card" id="startForm" novalidate>
             <div class="article-pick">
               <div class="field">
                 <label for="articleSelect">지문</label>
@@ -104,24 +99,43 @@
         </div>
       </section>
 
-      <section class="section rule-top" id="how">
+      <section class="section steps-section">
         <div class="wrap">
-          <h2>결과 화면에서 보이는 것</h2>
-          <figure class="gaze-figure">
-            <svg viewBox="0 0 960 360" role="img" aria-label="지문 위의 시선 고정과 이동 경로 예시">
-              <rect x="0.5" y="0.5" width="959" height="359" fill="#fffdf7" stroke="#c8bfa9"/>
-              <rect x="44" y="52" width="3" height="110" fill="#2f4f93"/>
-              <rect x="44" y="204" width="3" height="110" fill="#b5372c"/>
-              <g fill="#e6dfcd">
+          <div class="section-title">
+            <h2>이렇게 진행돼요</h2>
+            <p>보정부터 결과까지 10분이면 충분해요.</p>
+          </div>
+          <ol class="step-row">
+              <li><span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></span><b>시선 보정</b><span>점 9개를 보며 누르기</span><small>약 1분</small></li>
+              <li><span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H11v17H5.5A2.5 2.5 0 0 0 3 22.5z"/><path d="M21 5.5A2.5 2.5 0 0 0 18.5 3H13v17h5.5a2.5 2.5 0 0 1 2.5 2.5z"/></svg></span><b>기사 읽기</b><span>모르는 단어는 눌러서 뜻 보기</span><small>4분 내외</small></li>
+              <li><span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m8.5 9 1.5 1.5L13 7.5M8.5 15l1.5 1.5L13 13.5"/><path d="M15 9h1.5M15 15h1.5"/></svg></span><b>내용 퀴즈</b><span>지문을 보지 않고 답하기</span><small>5문항</small></li>
+              <li><span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 4.5 5 5L9 20H4v-5z"/><path d="M12 7l5 5"/></svg></span><b>돌아보기</b><span>어려웠던 문장 직접 고르기</span><small>점수와 무관</small></li>
+              <li><span class="step-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></span><b>결과</b><span>문단별 읽음, 막힌 문장, 히트맵</span><small>바로 확인</small></li>
+          </ol>
+        </div>
+      </section>
+
+      <section class="section soft" id="how">
+        <div class="wrap">
+          <div class="section-title">
+            <h2>결과 화면에서 이런 걸 볼 수 있어요</h2>
+            <p>점수 하나가 아니라, 읽는 과정을 문단과 문장 단위로 보여 줘요.</p>
+          </div>
+          <figure class="gaze-figure card">
+            <svg viewBox="0 0 960 360" role="img" class="fig-svg" aria-label="지문 위의 시선 고정과 이동 경로 예시">
+              <rect x="0.5" y="0.5" width="959" height="359" fill="#ffffff" stroke="#e3e9f3"/>
+              <rect x="44" y="52" width="3" height="110" fill="#1f5eff"/>
+              <rect x="44" y="204" width="3" height="110" fill="#f0604d"/>
+              <g fill="#e8edf5">
                 <rect x="72" y="52" width="780" height="12"/><rect x="72" y="84" width="812" height="12"/>
                 <rect x="72" y="116" width="760" height="12"/><rect x="72" y="148" width="430" height="12"/>
                 <rect x="72" y="204" width="800" height="12"/><rect x="72" y="236" width="770" height="12"/>
                 <rect x="72" y="268" width="812" height="12"/><rect x="72" y="300" width="520" height="12"/>
               </g>
-              <rect x="300" y="112" width="460" height="20" fill="rgba(246,222,92,.55)"/>
-              <polyline fill="none" stroke="#2f4f93" stroke-opacity=".5" stroke-width="1.5"
+              <rect x="300" y="112" width="460" height="20" fill="rgba(255,214,64,.5)"/>
+              <polyline fill="none" stroke="#1f5eff" stroke-opacity=".5" stroke-width="1.5"
                 points="110,58 260,58 420,58 590,58 760,58 110,90 300,90 470,90 640,90 830,90 380,90 560,90 120,122 330,122 520,122 760,122 130,154 300,154 460,154 840,210"/>
-              <g fill="#2f4f93" fill-opacity=".22" stroke="#2f4f93" stroke-opacity=".6">
+              <g fill="#1f5eff" fill-opacity=".22" stroke="#1f5eff" stroke-opacity=".6">
                 <circle cx="110" cy="58" r="12"/><circle cx="260" cy="58" r="16"/><circle cx="420" cy="58" r="10"/><circle cx="590" cy="58" r="18"/><circle cx="760" cy="58" r="12"/>
                 <circle cx="110" cy="90" r="14"/><circle cx="300" cy="90" r="11"/><circle cx="470" cy="90" r="20"/><circle cx="640" cy="90" r="12"/><circle cx="830" cy="90" r="15"/>
                 <circle cx="560" cy="90" r="13"/>
@@ -129,18 +143,18 @@
                 <circle cx="130" cy="154" r="12"/><circle cx="300" cy="154" r="17"/><circle cx="460" cy="154" r="11"/>
                 <circle cx="840" cy="210" r="9"/>
               </g>
-              <path d="M824 84 C 720 40, 480 40, 388 82" fill="none" stroke="#b5372c" stroke-width="1.5"/>
-              <path d="M396 72 l-10 11 l14 3" fill="none" stroke="#b5372c" stroke-width="1.5"/>
+              <path d="M824 84 C 720 40, 480 40, 388 82" fill="none" stroke="#f0604d" stroke-width="1.5"/>
+              <path d="M396 72 l-10 11 l14 3" fill="none" stroke="#f0604d" stroke-width="1.5"/>
               <g font-family="IBM Plex Sans KR, sans-serif" font-size="13" font-weight="600">
-                <text x="72" y="36" fill="#2f4f93">1문단 · 읽음 92% · 21.4초</text>
-                <text x="72" y="190" fill="#b5372c">2문단 · 건너뜀 · 0.6초</text>
-                <text x="600" y="36" fill="#b5372c">되돌아 읽기</text>
+                <text x="72" y="36" fill="#1f5eff">1문단 · 읽음 92% · 21.4초</text>
+                <text x="72" y="190" fill="#f0604d">2문단 · 건너뜀 · 0.6초</text>
+                <text x="600" y="36" fill="#f0604d">되돌아 읽기</text>
               </g>
             </svg>
             <figcaption>원은 시선이 멈춘 곳이고, 클수록 오래 머문 거예요. 빨간 화살표는 앞으로 되돌아간 시선, 노란 형광펜은 학생이 직접 고른 어려운 문장입니다.</figcaption>
           </figure>
 
-          <dl class="explain">
+          <dl class="explain feature-cards">
             <div><dt>문단을 얼마나 읽었나</dt><dd>문단마다 시선이 머문 시간을 그 문단 길이에 맞는 읽기 시간(분당 200단어 기준)과 비교해요. 75% 이상이면 읽음, 25% 미만이면 건너뜀으로 봅니다.</dd></div>
             <div><dt>어디서 막혔나</dt><dd>그 학생의 평소 속도보다 두 배 넘게 오래 걸린 문장, 지나간 뒤 두 줄 이상 위로 돌아가 다시 읽은 문장을 표시하고 점수에서 조금 뺍니다.</dd></div>
             <div><dt>측정을 믿을 수 있나</dt><dd>보정 때 학습에 쓰지 않은 점 5개로 실제 오차를 재요. 오차가 크면 감점을 줄이거나 하지 않고, 교사 화면에 경고를 남깁니다.</dd></div>
@@ -148,10 +162,11 @@
         </div>
       </section>
 
-      <section class="section rule-top" id="data">
+      <section class="section" id="data">
         <div class="wrap split-data">
           <div>
-            <h2>측정이지 진단은 아니에요</h2>
+            <h2>알아 두세요</h2>
+            <p class="lead-strong">이 도구는 측정이지 진단이 아니에요.</p>
             <p>모든 학생을 같은 기준으로 재기 때문에 반 안에서 비교하거나 같은 학생의 변화를 따라갈 수는 있어요. 하지만 왜 그렇게 읽었는지는 알려 주지 않습니다. 시력, 집중, 언어 배경 같은 이유는 교사가 대화로 확인해야 해요.</p>
             <p>웹캠 시선 추적은 오차가 커서 한두 줄씩 어긋나기도 합니다. 이 도구가 어떻게 판정 기준을 맞췄는지는 <a href="https://github.com/GHLee1016/Lesen-Fuer-Studenten/blob/main/docs/tuning.md" rel="noopener">조정 기록</a>에 적어 두었어요.</p>
           </div>

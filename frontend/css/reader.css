@@ -22,11 +22,11 @@ body[data-state="read"] .article .w:hover { background: var(--bg-soft); }
 .gloss.err { color: var(--pink); }
 /* difficult sentences on the results map */
 /* automatic: a red correction-pen wave; the student's own: highlighter */
-.article .sent.auto { text-decoration: underline wavy rgba(181, 55, 44, .75); text-decoration-thickness: 1.5px; text-underline-offset: 6px; text-decoration-skip-ink: none; }
+.article .sent.auto { text-decoration: underline wavy rgba(240, 96, 77, .85); text-decoration-thickness: 1.5px; text-underline-offset: 6px; text-decoration-skip-ink: none; }
 .article .sent.marked { background: var(--hl); }
 .article.hide-hard .sent.auto, .article.hide-hard .sent.marked { text-decoration: none; background: none; box-shadow: none; }
 body[data-state="results"] .article .sent { cursor: pointer; }
-body[data-state="results"] .article .sent:hover { background: rgba(31, 29, 25, .05); }
+body[data-state="results"] .article .sent:hover { background: rgba(31, 94, 255, .06); }
 .article .w.hard-word { text-decoration: underline dotted var(--pink); text-decoration-thickness: 2px; text-underline-offset: 7px; }
 .article p:last-child { margin-bottom: 0; }
 @media (max-width: 700px) { .article { padding: 30px 22px; font-size: 18px; } .article h1 { font-size: 28px; } }

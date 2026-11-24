@@ -1,57 +1,44 @@
-/* Headings: MaruBuri Bold (NAVER, OFL), self-hosted and subset to ASCII and
-   the 2,350 common Hangul syllables (frontend/fonts/MaruBuri-OFL.txt).
-   Rare syllables fall back to the next font in --font-head. */
-@font-face {
-  font-family: "MaruBuri";
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-  src: url("/static/fonts/MaruBuri-Bold-ksx1001.woff2") format("woff2");
-}
-
 :root {
-  /* Paper and ink: a printed worksheet rather than an app template.
-     Black ink for text, fountain-pen blue (Königsblau) for actions and
-     "read" data, correction red for skipped/difficult parts, highlighter
-     yellow for what the student marks. Variable names are kept from the
-     earlier theme because scripts refer to them. */
-  --ink: #1f1d19;
-  --ink-deep: #191814;
-  --pen: #263f86;
-  --pen-dark: #1c3070;
-  --text: #2d2a24;
-  --text-2: #5e584c;
-  --text-3: #8a8373;
-  --bg: #f3f0e7;
-  --bg-soft: #ebe6d9;
-  --bg-teal: #e4e8f2;
-  --white: #fffdf7;
-  --line: #ddd6c4;
-  --line-2: #c8bfa9;
+  /* Bright study-service look: white surfaces on a pale blue-grey page,
+     one clear blue for actions and "read" data, coral for skipped and
+     difficult parts, a soft yellow highlighter for what the student marks.
+     Variable names are kept from earlier themes because scripts use them. */
+  --ink: #16223b;
+  --ink-deep: #101a2e;
+  --pen: #1f5eff;
+  --pen-dark: #1549d6;
+  --text: #2a3550;
+  --text-2: #56617a;
+  --text-3: #8a93a8;
+  --bg: #f4f7fc;
+  --bg-soft: #edf2fa;
+  --bg-teal: #e8efff;
+  --white: #ffffff;
+  --line: #e3e9f3;
+  --line-2: #cfd8e8;
   /* data colours: at/above · approaching · needs support */
-  --teal: #2f4f93;
-  --teal-2: #4d6aae;
-  --teal-light: #b7c1d8;
-  --pink: #b5372c;
-  --pink-soft: #f5e2dc;
-  --sand: #b9831c;
-  --sand-soft: #f7edd2;
-  --hl: rgba(246, 222, 92, .55);
+  --teal: #1f5eff;
+  --teal-2: #4d80ff;
+  --teal-light: #a9c2ff;
+  --pink: #f0604d;
+  --pink-soft: #fdebe8;
+  --sand: #e9a21a;
+  --sand-soft: #fff5de;
+  --hl: rgba(255, 214, 64, .5);
   --good: var(--teal);
   --warn: var(--sand);
   --bad: var(--pink);
 
-  --shadow: none;
-  --shadow-lg: 0 1px 0 var(--line-2), 0 18px 40px rgba(31, 29, 25, .12);
-  --radius: 2px;
-  --radius-sm: 2px;
-  /* Korean and UI text: IBM Plex Sans KR. Korean headings: MaruBuri.
-     German text and figures: Literata, a serif drawn for long reading on
-     screens. All are web fonts, so the text breaks into the same lines on
-     every OS, which the teacher's replay relies on (it re-renders the text
-     at the student's width). */
+  --shadow: 0 1px 2px rgba(22, 34, 59, .04), 0 6px 20px rgba(22, 34, 59, .06);
+  --shadow-lg: 0 2px 6px rgba(22, 34, 59, .06), 0 24px 60px rgba(22, 34, 59, .14);
+  --radius: 16px;
+  --radius-sm: 10px;
+  /* Korean and UI text: IBM Plex Sans KR. German text and figures:
+     Literata, a serif drawn for long reading on screens. Both are web
+     fonts, so the text breaks into the same lines on every OS, which the
+     teacher's replay relies on (it re-renders at the student's width). */
   --font-ui: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
-  --font-head: "MaruBuri", "IBM Plex Sans KR", "AppleMyungjo", "Batang", serif;
+  --font-head: var(--font-ui);
   --font-de: "Literata", Georgia, "Times New Roman", serif;
   --font-display: var(--font-de);
   --font-read: var(--font-de);
@@ -72,7 +59,7 @@ body {
   overflow-wrap: break-word;
 }
 h1, h2, h3, h4 { margin: 0; color: var(--ink); }
-h1, h2 { font-family: var(--font-head); font-weight: 700; letter-spacing: -0.01em; line-height: 1.35; }
+h1, h2 { font-family: var(--font-head); font-weight: 700; letter-spacing: -0.025em; line-height: 1.3; }
 :lang(de) { font-family: var(--font-de); letter-spacing: 0; }
 h3, h4 { font-family: var(--font-ui); font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; }
 a { color: var(--ink); }
@@ -85,19 +72,21 @@ a { color: var(--ink); }
   position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 24px;
   height: 64px; padding: 0 32px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--ink);
+  background: rgba(255, 255, 255, .92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
 }
 .brand { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ink); text-decoration: none; white-space: nowrap; }
-.brand b { font: 700 22px/1 var(--font-de); letter-spacing: 0; }
-.brand small { font: italic 15px/1 var(--font-de); color: var(--text-2); }
+.brand { align-items: center; }
+.brand b { font: 700 21px/1 var(--font-de); color: var(--pen); }
+.brand small { font: 500 13px/1 var(--font-ui); color: var(--text-2); }
 .spacer { flex: 1; }
 
 /* ---------- buttons ---------- */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  height: 42px; padding: 0 18px; border-radius: var(--radius-sm);
-  border: 1px solid var(--ink); background: transparent; color: var(--ink);
+  height: 44px; padding: 0 20px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-2); background: var(--white); color: var(--ink);
   font: 600 14px/1 var(--font-ui); cursor: pointer; white-space: nowrap; text-decoration: none;
   transition: background .15s, color .15s, border-color .15s;
 }
@@ -106,55 +95,57 @@ a { color: var(--ink); }
 .btn svg { width: 16px; height: 16px; }
 .btn-primary { background: var(--pen); border-color: var(--pen); color: var(--white); }
 .btn-primary:hover { background: var(--pen-dark); border-color: var(--pen-dark); }
-.btn-soft { background: transparent; border-color: var(--line-2); }
+.btn-soft { background: var(--bg-teal); border-color: transparent; color: var(--pen); }
+.btn-soft:hover { background: #dce6ff; }
 .btn-ghost { border-color: transparent; color: var(--text-2); }
 .btn-ghost:hover { background: var(--bg-soft); }
 .btn-danger { border-color: var(--pink); color: var(--pink); }
 .btn-danger:hover { background: var(--pink-soft); }
 .btn-sm { height: 34px; padding: 0 13px; font-size: 13px; }
-.btn-lg { height: 50px; padding: 0 24px; font-size: 15px; }
+.btn-lg { height: 52px; padding: 0 28px; font-size: 16px; }
 .btn:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
-.input:focus { outline: none; border-color: var(--pen); box-shadow: 0 1px 0 var(--pen); }
+.input:focus { outline: none; border-color: var(--pen); box-shadow: 0 0 0 3px rgba(31, 94, 255, .15); }
 
 /* ---------- form ---------- */
 .field { display: grid; gap: 7px; }
 .field label { font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .input {
-  height: 42px; padding: 0 2px; border-radius: 0;
-  border: 0; border-bottom: 1px solid var(--text-2); background: transparent; color: var(--ink);
+  height: 48px; padding: 0 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--line-2); background: var(--white); color: var(--ink);
   font: 16px var(--font-ui); width: 100%;
 }
 .input::placeholder { color: var(--text-3); }
-select.input { appearance: none; padding-right: 30px; cursor: pointer;
-  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235e584c' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 4px center; }
+select.input { appearance: none; padding-right: 38px; cursor: pointer;
+  background: var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2356617a' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center; }
 .hint { font-size: 13px; color: var(--text-3); }
 .error-text { font-size: 13px; color: var(--pink); font-weight: 600; }
 
 /* ---------- surfaces ---------- */
-.card { background: var(--white); border: 1px solid var(--line-2); }
-.panel { background: var(--white); border: 1px solid var(--line); }
+.card { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.panel { background: var(--white); border: 1px solid var(--line); border-radius: var(--radius); }
 
 .chip {
-  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 7px;
-  border-radius: 0; font-size: 12.5px; font-weight: 600; white-space: nowrap;
-  background: transparent; color: var(--text-2); border: 1px solid var(--line-2);
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 11px;
+  border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap;
+  background: var(--bg-soft); color: var(--text-2); border: 0;
 }
-.chip.good { color: var(--teal); border-color: currentColor; }
-.chip.warn { color: #8a5f0e; border-color: currentColor; }
-.chip.bad { color: var(--pink); border-color: currentColor; }
-.chip.accent { color: var(--ink); border-color: var(--ink); }
+.chip.good { background: var(--bg-teal); color: var(--pen); }
+.chip.warn { background: var(--sand-soft); color: #9a6608; }
+.chip.bad { background: var(--pink-soft); color: #c9402f; }
+.chip.accent { background: var(--bg-teal); color: var(--pen); }
 .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
 .dot.live { animation: live 1.6s ease-in-out infinite; }
 @keyframes live { 50% { opacity: .35; } }
-.sq { display: inline-block; width: 10px; height: 10px; border-radius: 1px; flex: none; }
+.sq { display: inline-block; width: 10px; height: 10px; border-radius: 3px; flex: none; }
 
 /* section rule, like the line under a heading on a printed sheet */
-.rule-top { border-top: 1px solid var(--ink); }
+.rule-top { border-top: 1px solid var(--line); }
 
 /* bars */
-.bar { height: 8px; background: var(--bg-soft); overflow: hidden; }
+.bar { height: 8px; border-radius: 99px; background: var(--bg-soft); overflow: hidden; }
+.bar i { border-radius: 99px; }
 .bar i { display: block; height: 100%; background: var(--teal); }
-.stack { display: flex; height: 14px; overflow: hidden; background: var(--bg-soft); }
+.stack { display: flex; height: 14px; border-radius: 99px; overflow: hidden; background: var(--bg-soft); }
 .stack i { display: block; height: 100%; }
 
 .muted { color: var(--text-3); }
@@ -162,6 +153,6 @@ select.input { appearance: none; padding-right: 30px; cursor: pointer;
 
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 100;
-  background: var(--ink-deep); color: var(--white); padding: 12px 18px; border-radius: 0;
+  background: var(--ink-deep); color: var(--white); padding: 12px 18px; border-radius: var(--radius-sm);
   font-size: 14px; box-shadow: var(--shadow-lg); max-width: calc(100vw - 32px);
 }

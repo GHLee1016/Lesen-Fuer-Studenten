@@ -175,7 +175,7 @@ class Replay {
     // fixation trail
     const recent = this.fix.filter((f) => f.t <= t && f.t + f.d >= t - TRAIL_MS);
     ctx.save();
-    ctx.strokeStyle = "rgba(47, 79, 147, .45)";
+    ctx.strokeStyle = "rgba(31, 94, 255, .45)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     recent.forEach((f, k) => (k ? ctx.lineTo(f.x, f.y) : ctx.moveTo(f.x, f.y)));
@@ -183,7 +183,7 @@ class Replay {
     for (const f of recent) {
       const age = Math.max(0, t - (f.t + f.d));
       ctx.globalAlpha = Math.max(0.1, 0.75 * (1 - age / TRAIL_MS));
-      ctx.fillStyle = "#2f4f93";
+      ctx.fillStyle = "#1f5eff";
       ctx.beginPath();
       ctx.arc(f.x, f.y, Math.min(26, 5 + Math.sqrt(Math.min(f.d, t - f.t)) / 2.2), 0, Math.PI * 2);
       ctx.fill();
@@ -192,8 +192,8 @@ class Replay {
     const s = this.sampleAt(t);
     if (s) {
       ctx.globalAlpha = 1;
-      ctx.fillStyle = "rgba(181, 55, 44, .25)";
-      ctx.strokeStyle = "#b5372c";
+      ctx.fillStyle = "rgba(240, 96, 77, .25)";
+      ctx.strokeStyle = "#f0604d";
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(s[1], s[2], 12, 0, Math.PI * 2);
