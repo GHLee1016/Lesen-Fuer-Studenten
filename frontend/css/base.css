@@ -78,6 +78,7 @@ a { color: var(--ink); }
 }
 .brand { display: inline-flex; align-items: baseline; gap: 8px; color: var(--ink); text-decoration: none; white-space: nowrap; }
 .brand { align-items: center; }
+.brand img { width: 30px; height: 30px; flex: none; align-self: center; margin-right: 2px; }
 .brand b { font: 700 21px/1 var(--font-de); color: var(--pen); }
 .brand small { font: 500 13px/1 var(--font-ui); color: var(--text-2); }
 .spacer { flex: 1; }
