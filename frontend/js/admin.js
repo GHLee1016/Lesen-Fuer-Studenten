@@ -21,6 +21,9 @@ let overview = null;
 let ws = null;
 let pingTimer = null;
 let reconnectTimer = null;
+let pollTimer = null;
+let wsFailures = 0;
+let lastOverviewJson = "";
 let openUser = null;
 
 // ------------------------------------------------------------- auth ----
@@ -46,6 +49,7 @@ async function login(t) {
     if (res.status === 401) throw new Error("토큰이 올바르지 않아요.");
     if (!res.ok) throw new Error(`서버 오류 (HTTP ${res.status})`);
     overview = await res.json();
+    lastOverviewJson = JSON.stringify(overview);
   } catch (err) {
     token = "";
     storeToken("");
@@ -67,6 +71,8 @@ function logout(msg) {
   storeToken("");
   clearInterval(pingTimer);
   clearTimeout(reconnectTimer);
+  stopPolling();
+  wsFailures = 0;
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
   closeDrawer();
   $("#dashView").hidden = true;
@@ -92,10 +98,36 @@ $("#logout").addEventListener("click", () => logout());
 
 function setLive(state) {
   const chip = $("#liveChip");
-  const map = { on: ["good", "실시간"], connecting: ["", "연결 중"], off: ["warn", "재연결 중"] };
+  const map = { on: ["good", "실시간"], connecting: ["", "연결 중"], off: ["warn", "재연결 중"], poll: ["", "20초마다 갱신"] };
   const [cls, text] = map[state];
   chip.className = `chip ${cls}`;
   chip.replaceChildren(h("span", { class: "dot" }), text);
+}
+
+// Several server instances may run behind the deployment (e.g. Vercel), and
+// a session saved on another instance is not pushed over this socket. The
+// dashboard therefore asks for a fresh overview every 20 s, and falls back to
+// plain HTTP polling if the socket keeps failing.
+const REFRESH_MS = 20000;
+
+function applyOverview(data) {
+  const json = JSON.stringify(data);
+  if (json === lastOverviewJson) return;
+  lastOverviewJson = json;
+  overview = data;
+  render();
+  if (openUser) refreshDrawer();
+}
+
+async function pollOverview() {
+  try {
+    applyOverview(await (await api("/api/admin/overview")).json());
+  } catch { /* next tick retries */ }
+}
+
+function stopPolling() {
+  clearInterval(pollTimer);
+  pollTimer = null;
 }
 
 function connectWs() {
@@ -106,22 +138,27 @@ function connectWs() {
   ws = new WebSocket(`${proto}://${location.host}/api/admin/ws`);
   ws.onopen = () => {
     ws.send(JSON.stringify({ type: "auth", token }));
-    pingTimer = setInterval(() => ws?.readyState === 1 && ws.send("ping"), 20000);
+    pingTimer = setInterval(() => ws?.readyState === 1 && ws.send("refresh"), REFRESH_MS);
   };
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.type === "overview") {
-      overview = msg.data;
+      wsFailures = 0;
+      stopPolling();
       setLive("on");
-      render();
-      if (openUser) refreshDrawer();
+      applyOverview(msg.data);
     }
   };
   ws.onclose = (ev) => {
     clearInterval(pingTimer);
     if (ev.code === 4401) return logout("토큰이 올바르지 않아요.");
-    setLive("off");
-    reconnectTimer = setTimeout(connectWs, 2500);
+    wsFailures += 1;
+    if (wsFailures >= 3 && !pollTimer) {
+      pollTimer = setInterval(pollOverview, REFRESH_MS);
+      pollOverview();
+    }
+    setLive(pollTimer ? "poll" : "off");
+    reconnectTimer = setTimeout(connectWs, Math.min(30000, 2500 * wsFailures));
   };
 }
 

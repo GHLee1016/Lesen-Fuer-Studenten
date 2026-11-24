@@ -1,24 +1,6 @@
-import importlib
-import os
-
 import pytest
-from fastapi.testclient import TestClient
 
-TOKEN = "test-token"
-
-
-@pytest.fixture()
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("ADMIN_TOKEN", TOKEN)
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "t.db"))
-    import backend.config
-    import backend.main
-
-    importlib.reload(backend.config)
-    importlib.reload(backend.main)
-    with TestClient(backend.main.app) as c:
-        yield c
-
+from tests.conftest import TOKEN
 
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
@@ -109,6 +91,9 @@ def test_exports(client):
 def test_admin_ws_auth(client):
     with client.websocket_connect("/api/admin/ws") as ws:
         ws.send_json({"type": "auth", "token": TOKEN})
+        assert ws.receive_json()["type"] == "overview"
+        # periodic refresh (sessions saved on another server instance)
+        ws.send_text("refresh")
         assert ws.receive_json()["type"] == "overview"
     with client.websocket_connect("/api/admin/ws") as ws:
         ws.send_json({"type": "auth", "token": "nope"})
@@ -230,3 +215,35 @@ def test_reanalyze_endpoint(client):
     assert client.post("/api/admin/reanalyze").status_code == 401
     r = client.post("/api/admin/reanalyze", headers=AUTH)
     assert r.status_code == 200 and r.json()["changed"] == []  # same params -> same scores
+
+
+def test_health_reports_store_without_secrets(client):
+    r = client.get("/api/health")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ok"] is True and body["admin_token_set"] is True
+    assert body["database"] in ("sqlite",) or body["database"].startswith("postgres (")
+    assert "password" not in r.text and "@" not in r.text
+
+
+def test_app_starts_when_database_is_unreachable(tmp_path, monkeypatch):
+    import importlib
+
+    from fastapi.testclient import TestClient
+
+    monkeypatch.setenv("ADMIN_TOKEN", TOKEN)
+    monkeypatch.setenv("DATABASE_URL", "postgresql://u:secret-pw@127.0.0.1:1/none?connect_timeout=1")
+    monkeypatch.setenv("DB_POOL_SIZE", "1")
+    monkeypatch.setenv("DB_TIMEOUT", "2")
+    import backend.config
+    import backend.main
+
+    importlib.reload(backend.config)
+    importlib.reload(backend.main)
+    with TestClient(backend.main.app, raise_server_exceptions=False) as c:
+        assert c.get("/").status_code == 200
+        r = c.get("/api/health")
+        assert r.status_code == 503 and r.json()["ok"] is False
+        assert "secret-pw" not in r.text
+    monkeypatch.delenv("DATABASE_URL")
+    importlib.reload(backend.config)

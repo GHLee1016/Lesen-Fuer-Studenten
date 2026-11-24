@@ -1,4 +1,9 @@
-fastapi>=0.115,<1
-uvicorn[standard]>=0.30,<1
+# Keep in sync with [project].dependencies in pyproject.toml (Vercel reads that
+# file; tests/test_deploy.py checks they match).
+fastapi>=0.137,<1
+uvicorn[standard]>=0.49,<1
+# Postgres (Supabase) when DATABASE_URL is set; SQLite needs nothing extra
+psycopg[binary]>=3.2,<4
+psycopg-pool>=3.2,<4
 # optional: context-aware glosses when ANTHROPIC_API_KEY is set
 anthropic>=2,<3

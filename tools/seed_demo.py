@@ -1,6 +1,7 @@
 """Fill the database with simulated sessions to try out the validation page.
 
     DB_PATH=data/demo.db python -m tools.seed_demo [count]
+    DATABASE_URL=postgresql://... python -m tools.seed_demo [count]   # e.g. Supabase
 
 Every session is marked mode="simulated" and its user id starts with "sim-",
 so it can never be mistaken for a real student. Self-reports are made
@@ -68,4 +69,5 @@ def seed(count: int = 16, seed: int = 7) -> list[str]:
 
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 16
-    print(f"{len(seed(n))} simulated sessions written to {config.DB_PATH}")
+    target = "Postgres (DATABASE_URL)" if config.DATABASE_URL else config.DB_PATH
+    print(f"{len(seed(n))} simulated sessions written to {target}")

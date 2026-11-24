@@ -1,11 +1,7 @@
-import importlib
-
 import pytest
-from fastapi.testclient import TestClient
 
 from backend.validation import _stats, wilson
-
-TOKEN = "test-token"
+from tests.conftest import TOKEN
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 
@@ -30,17 +26,6 @@ def test_stats_counts_and_false_alarms():
     assert s["no_report_flags"] == 0.5 and s["no_report_penalty"] == 3
 
 
-@pytest.fixture()
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("ADMIN_TOKEN", TOKEN)
-    monkeypatch.setenv("DB_PATH", str(tmp_path / "v.db"))
-    import backend.config
-    import backend.main
-
-    importlib.reload(backend.config)
-    importlib.reload(backend.main)
-    with TestClient(backend.main.app) as c:
-        yield c
 
 
 def test_seeded_sessions_flow_through_validation_and_whatif(client):

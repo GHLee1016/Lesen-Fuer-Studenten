@@ -1,0 +1,10 @@
+# Not needed at runtime; keeps the function bundle small.
+.github/
+docs/
+preview/
+tests/
+tools/
+data/
+*.db
+node_modules/
+e2e-out/
