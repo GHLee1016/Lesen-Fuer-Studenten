@@ -6,7 +6,9 @@
   <title>교사용 대시보드, Lesen für Studenten</title>
   <meta name="robots" content="noindex" />
   <meta name="theme-color" content="#ffffff" />
-  <link rel="icon" href="/favicon.ico" />
+  <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&amp;family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&amp;display=swap" />
@@ -26,7 +28,7 @@
   <!-- Login -->
   <section class="login" id="loginView">
     <form class="login-form sheet" id="loginForm">
-      <a class="brand" href="/"><b>Lesen</b><small>für Studenten</small></a>
+      <a class="brand" href="/"><img src="/static/logo.svg" width="30" height="30" alt="" /><b>Lesen</b><small>für Studenten</small></a>
       <h2>교사용 대시보드</h2>
       <p class="muted">반 전체의 읽기 수준 분포, 학생별 읽기 기록과 시선 재생, 판정 검증을 봅니다.</p>
       <div class="field">
@@ -43,7 +45,7 @@
   <!-- Dashboard -->
   <div id="dashView" hidden>
     <header class="topbar">
-      <a class="brand" href="/"><b>Lesen</b><small>교사용</small></a>
+      <a class="brand" href="/"><img src="/static/logo.svg" width="30" height="30" alt="" /><b>Lesen</b><small>교사용</small></a>
       <div class="spacer"></div>
       <span class="chip" id="liveChip"><span class="dot"></span>연결 중</span>
       <button class="btn btn-sm btn-soft" id="exportCsv" type="button"><svg fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><use href="#i-download"/></svg>CSV</button>
